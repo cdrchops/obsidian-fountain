@@ -102,3 +102,7 @@
     color: var(--text-a);
     background-color: transparent;
 }
+
+.centered {
+    text-align: center;
+}
