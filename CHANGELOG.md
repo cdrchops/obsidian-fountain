@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.32.0] - Fountain Links Create `.fountain` Files
+
+- **Following an unresolved `foo.fountain` link now creates `foo.fountain`**, not `foo.fountain.md`. Applies both to `[[>foo.fountain]]` from a fountain file (handled directly in the plugin's link click handler) and to `[[foo.fountain]]` / `[foo.fountain](foo.fountain)` from a markdown file (Obsidian's core handler still creates `foo.fountain.md`, but a vault listener immediately renames the empty file and a workspace listener swaps any leaf still showing it as markdown onto the registered fountain view).
+- **Internal**: There is no public API to override the extension Obsidian picks for files created from unresolved wiki-links — the workaround is documented in `src/main.ts` with a pointer to the open Obsidian forum thread, to be removed once an official hook lands.
+
 ## [0.31.0] - Links Follow "Hide Notes"
 
 - **`[[>...]]` links now obey the note-visibility toggle**: Both the PDF dialog's **Hide notes** option and the reading view's note toggle treat link display text the same as any other note. With notes visible the link label still renders inline as plain text (exactly as before); with notes hidden the whole link disappears. A clean shooting-script export shouldn't carry authorial cross-references, and a `>` note is still a note — making links a carve-out was the inconsistency. Design rationale in `design/links.md`.
