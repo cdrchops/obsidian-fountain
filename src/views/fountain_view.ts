@@ -156,7 +156,13 @@ export class FountainView extends TextFileView {
       sourcePath,
     );
     if (!dest) {
-      // Unresolved: defer to Obsidian, which will offer to create the file.
+      if (target.toLowerCase().endsWith(".fountain")) {
+        // Obsidian's openLinkText would create `<target>.md`; create the
+        // file with the right extension ourselves instead.
+        void this.createAndOpenFountainFile(target, inNewLeaf);
+        return;
+      }
+      // Defer to Obsidian, which will offer to create the file.
       this.app.workspace.openLinkText(target, sourcePath, inNewLeaf);
       return;
     }
@@ -168,6 +174,30 @@ export class FountainView extends TextFileView {
       // different leaf when the target is already open elsewhere or when
       // the active leaf isn't the leaf the user clicked from.
       this.leaf.openFile(dest);
+    }
+  }
+
+  private async createAndOpenFountainFile(
+    target: string,
+    inNewLeaf: boolean,
+  ): Promise<void> {
+    const sourcePath = this.file?.path ?? "";
+    const path = target.includes("/")
+      ? target
+      : (() => {
+          const parent = this.app.fileManager.getNewFileParent(
+            sourcePath,
+            target,
+          );
+          const folder = parent.path === "/" ? "" : parent.path;
+          return folder ? `${folder}/${target}` : target;
+        })();
+    try {
+      const file = await this.app.vault.create(path, "");
+      const leaf = inNewLeaf ? this.app.workspace.getLeaf("tab") : this.leaf;
+      await leaf.openFile(file);
+    } catch (err) {
+      console.error("fountain: failed to create linked file", path, err);
     }
   }
 

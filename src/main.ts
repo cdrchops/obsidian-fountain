@@ -2,6 +2,7 @@ import {
   type MarkdownPostProcessorContext,
   Notice,
   Plugin,
+  TFile,
 } from "obsidian";
 import {
   executeRemovalCommand,
@@ -39,8 +40,60 @@ export default class FountainPlugin extends Plugin {
     this.app.workspace.onLayoutReady(() => {
       openSidebar(this.app);
       this.linkIndex?.initialize();
+      this.installFountainMdAutoRename();
     });
     this.registerMarkdownPostProcessor(this.markdownPostProcessor);
+  }
+
+  /**
+   * When the user follows an unresolved `[[foo.fountain]]` (or markdown)
+   * link from a `.md` file, Obsidian's core link handler creates
+   * `foo.fountain.md` regardless of whether `.fountain` is registered as a
+   * view extension. There is no public API to override the extension that
+   * Obsidian picks for new files created from links — see
+   *   https://forum.obsidian.md/t/api-method-to-add-link-and-have-it-parsed-into-metadatacache/72046
+   *
+   * We work around this in two halves: rename empty `*.fountain.md` files
+   * back to `.fountain` on disk, and force any leaf still showing a
+   * `.fountain` file as a markdown view onto the registered fountain
+   * view. Both halves are needed because the on-disk rename races with the
+   * leaf-open call inside Obsidian's link-click flow — whichever finishes
+   * first, the other half cleans up the stragglers.
+   *
+   * Re-check periodically whether an officially supported hook has shown
+   * up and drop this code once it has.
+   */
+  private installFountainMdAutoRename() {
+    this.registerEvent(
+      this.app.vault.on("create", (file) => {
+        if (!(file instanceof TFile)) return;
+        if (!file.name.toLowerCase().endsWith(".fountain.md")) return;
+        if (file.stat.size > 0) return;
+        const newPath = file.path.slice(0, -".md".length);
+        if (this.app.vault.getAbstractFileByPath(newPath)) return;
+        this.app.fileManager.renameFile(file, newPath).catch((err) => {
+          console.error(
+            "fountain: rename .fountain.md -> .fountain failed",
+            err,
+          );
+        });
+      }),
+    );
+    this.registerEvent(
+      this.app.workspace.on("file-open", (file) => {
+        if (!file || file.extension !== "fountain") return;
+        this.app.workspace.iterateAllLeaves((leaf) => {
+          const view = leaf.view;
+          if (view.getViewType() === VIEW_TYPE_FOUNTAIN) return;
+          const viewFile = (view as { file?: TFile }).file;
+          if (viewFile?.path !== file.path) return;
+          void leaf.setViewState({
+            type: VIEW_TYPE_FOUNTAIN,
+            state: { file: file.path },
+          });
+        });
+      }),
+    );
   }
 
   async onunload() {
