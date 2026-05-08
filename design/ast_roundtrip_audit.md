@@ -54,11 +54,40 @@ existing `forced: boolean` in the same change.
 
 ## Open work
 
-- [ ] **Audit multi-line elements against rule 2.** Likely outliers:
-  - `ForcedActionLine` shifts start by `-1` for the `!` but doesn't
-    extend further left for leading whitespace.
-  - Multi-line `Action` / `Dialogue` / `Lyrics` / `Synopsis` need a
-    check for trailing-blank-line inclusion.
+Rule-2 status (audited by parsing representative inputs and comparing
+ranges; "n/a" means the spec pins the marker to column 0, so leading
+whitespace isn't expected to belong to the range):
+
+| Element | Leading ws | Trailing blank line |
+|---|---|---|
+| `TitlePage` | n/a | ✅ |
+| `Scene` | ✅ | ✅ |
+| `Synopsis` | ✅ | ✅ |
+| `Dialogue` | ✅ | ✅ |
+| `Transition` (`TO:`) | ✅ | ✅ |
+| `Action` (centered) | ✅ | ✅ |
+| `Action` (plain) | ✅ (folded into text) | ✅ |
+| `Action` (forced `!`) | n/a (spec: col 0) | ✅ |
+| `Transition` (forced `>`) | n/a (spec: col 0) | ✅ |
+| `Lyrics` (`~`) | n/a (spec: col 0) | ❌ |
+| `Section` (`#`) | n/a (spec: col 0) — **parser too permissive** | ❌ |
+| `PageBreak` (`===`) | n/a (spec: col 0) — **parser too permissive** | ❌ |
+
+Concrete fixes worth opening:
+
+- [ ] **Tighten `Section` and `PageBreak` to reject leading
+  whitespace.** The spec pins `#` and `===` to column 0 (confirmed
+  in Highland); the parser currently consumes `OptionalBlanks` first
+  and accepts indented forms. Drop the `OptionalBlanks` from both
+  rules.
+- [ ] **`Lyrics`, `Section`, `PageBreak` should consume the trailing
+  blank-line separator.** Currently the `\n\n` after the element is
+  donated to the next element (often an Action that starts with a
+  leading `\n`). Easy parser change; check that consumers don't
+  depend on the existing shape.
+
+Other open items:
+
 - [ ] **Forced-marker ranges** on Action/Scene/Transition. Replace
   `forced: boolean` per rule 3. Add when a feature wants them.
 - [ ] **Styled-text marker ranges** for `*`/`**`/`_`. Add when the
@@ -93,9 +122,12 @@ field; ❌ not recoverable from AST alone.
 
 ### Action
 
-- `Action.range` ✅ — full element.
+- `Action.range` ✅ — covers all lines including the trailing
+  blank-line separator (per rule 2).
 - `Action.lines: Line[]` ✅ — each line has a range.
 - `Line.elements` — inner ranges (text, styled, notes, boneyard).
+- Plain action lines may carry any leading whitespace as part of
+  their text. Forced action (`!`) is column-0 by spec.
 - `!` of forced action ❌ — `ForcedActionLine` shifts the line range
   start by `-1` to *include* the `!` but doesn't break it out.
 - `>`/`<` of centered line ⚠️ — inside `Line.range`, recoverable.
@@ -104,7 +136,9 @@ field; ❌ not recoverable from AST alone.
 
 ### Transition
 
-- `Transition.range` ✅
+- `Transition.range` ✅ — both variants include the trailing
+  blank-line separator (per rule 2). Forced (`>`) is column-0 by
+  spec; unforced (`… TO:`) consumes any leading whitespace.
 - `Transition.forced: boolean` ⚠️ — `>` inside `range`, no separate
   field. `extractTransitionText` strips it via string trimming
   rather than range slicing.
@@ -128,9 +162,13 @@ field; ❌ not recoverable from AST alone.
 
 ### Section
 
-- `Section.range` ✅ — full line including trailing newline.
-- `Section.depth: number` — count of `#`s. The `#` characters live at
-  `range.start..range.start + depth` (fixed-offset carve-out).
+- `Section.range` ✅ — but **two parser issues** (see Open work):
+  the parser currently consumes leading whitespace before `#` even
+  though the spec pins `#` to column 0, and the trailing blank-line
+  separator is NOT included.
+- `Section.depth: number` — count of `#`s. Once `#` is forced to
+  column 0, the `#` characters live at `range.start..range.start +
+  depth` (fixed-offset carve-out).
 
 ### Synopsis
 
@@ -141,7 +179,10 @@ field; ❌ not recoverable from AST alone.
 
 ### Lyrics
 
-- `Lyrics.range` ✅
+- `Lyrics.range` ✅ — `~` must be at column 0 per the Fountain spec
+  (matches Highland), so leading whitespace is n/a. **Trailing
+  blank-line separator is NOT included** (rule-2 violation; same
+  as `Section` / `PageBreak`).
 - `Lyrics.lines: Line[]` ✅
 - `~` markers ⚠️ — inside `Line.range` (which includes `~text`).
 
@@ -159,8 +200,12 @@ field; ❌ not recoverable from AST alone.
 
 ### Page break
 
-- `PageBreak.range` ✅ — full element.
-- `===` lives inside `range` (fixed-offset carve-out).
+- `PageBreak.range` ✅ — same two parser issues as `Section`: the
+  parser currently consumes leading whitespace before `===` even
+  though the spec pins it to column 0, and the trailing blank-line
+  separator is NOT included.
+- `===` lives inside `range` (fixed-offset carve-out, once forced
+  to column 0).
 
 ### Styled text (bold/italics/underline)
 
