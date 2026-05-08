@@ -42,7 +42,7 @@ MultiLineValue
  = (" "|3..| / "\t") value:Value { return value; }
 
 PageBreak
- = OptionalBlanks "="|3..| NewLineOrEndOfInput { return mkPageBreak(range()); }
+ = "="|3..| NewLineOrEndOfInput { return mkPageBreak(range()); }
 
 Element
  = Scene
@@ -95,7 +95,7 @@ ActionLine
  / !PageBreakPattern @Line
 
 PageBreakPattern
- = OptionalBlanks "="|3..|
+ = "="|3..|
 
 ForcedActionLine
  = "!" line:Line  { return shiftLineStart(line, -1); }
@@ -142,7 +142,7 @@ Boneyard "boneyard"
  { return mkBoneyard(range()); }
 
 Section
- = OptionalBlanks hashes:Hashes RestOfLine NewLineOrEndOfInput
+ = hashes:Hashes RestOfLine NewLineOrEndOfInput
  { return mkSection(range(), hashes); }
 
 Hashes

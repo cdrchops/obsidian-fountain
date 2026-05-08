@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.33.2] - Section and Page Break Spec Compliance
+
+- **Fix**: `# Section` headings and `===` page breaks now require the marker to start at column 0, matching the Fountain spec (and Highland). Previously the parser accepted leading whitespace before both. An indented `  # heading` is now an action line; an indented `  ===` no longer creates a page break. The other forced markers (`!`, `>`, `~`) were already column-0-only.
+- **Internal**: New `__tests__/leading_whitespace.test.ts` pins the leading-whitespace contract for every line-based element so future refactors can't silently drift. Audit findings in `design/ast_roundtrip_audit.md`.
+
 ## [0.33.1] - Right Sidebar Hijack Fix
 
 - **Fix**: Opening a `.fountain` file no longer force-converts the right sidebar's `outline`, `backlink`, and `outgoing-link` views into fountain script views. The auto-rename handler that catches markdown leaves accidentally pointed at `.fountain` files (introduced in 0.32.0) was iterating *all* leaves and matching any view whose `.file` happened to track the active file — which is exactly what the right-sidebar reference views do. Restricted to `markdown` view types only, matching the original intent.

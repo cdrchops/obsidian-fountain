@@ -70,21 +70,26 @@ whitespace isn't expected to belong to the range):
 | `Action` (forced `!`) | n/a (spec: col 0) | ✅ |
 | `Transition` (forced `>`) | n/a (spec: col 0) | ✅ |
 | `Lyrics` (`~`) | n/a (spec: col 0) | ❌ |
-| `Section` (`#`) | n/a (spec: col 0) — **parser too permissive** | ❌ |
-| `PageBreak` (`===`) | n/a (spec: col 0) — **parser too permissive** | ❌ |
+| `Section` (`#`) | n/a (spec: col 0) | ❌ |
+| `PageBreak` (`===`) | n/a (spec: col 0) | ❌ |
+| `Synopsis` second-look | ⚠️ may be too permissive | — |
 
 Concrete fixes worth opening:
 
-- [ ] **Tighten `Section` and `PageBreak` to reject leading
-  whitespace.** The spec pins `#` and `===` to column 0 (confirmed
-  in Highland); the parser currently consumes `OptionalBlanks` first
-  and accepts indented forms. Drop the `OptionalBlanks` from both
-  rules.
+- [x] **Tightened `Section` and `PageBreak` to reject leading
+  whitespace.** Dropped `OptionalBlanks` from both rules (and from
+  the `PageBreakPattern` lookahead used by Action/Dialogue
+  terminators). Pinned by `__tests__/leading_whitespace.test.ts`.
 - [ ] **`Lyrics`, `Section`, `PageBreak` should consume the trailing
   blank-line separator.** Currently the `\n\n` after the element is
   donated to the next element (often an Action that starts with a
   leading `\n`). Easy parser change; check that consumers don't
   depend on the existing shape.
+- [ ] **Re-check `Synopsis` against the spec.** Discovered while
+  tightening `PageBreak`: indented `  ===` now falls through to
+  `Synopsis` (`  =text` matches `OptionalBlanks "=" text`). If the
+  spec also pins `=` to column 0, drop `OptionalBlanks` from
+  `SynopsisLine` too.
 
 Other open items:
 
@@ -162,13 +167,11 @@ field; ❌ not recoverable from AST alone.
 
 ### Section
 
-- `Section.range` ✅ — but **two parser issues** (see Open work):
-  the parser currently consumes leading whitespace before `#` even
-  though the spec pins `#` to column 0, and the trailing blank-line
-  separator is NOT included.
-- `Section.depth: number` — count of `#`s. Once `#` is forced to
-  column 0, the `#` characters live at `range.start..range.start +
-  depth` (fixed-offset carve-out).
+- `Section.range` ✅ — `#` is column-0 by spec (parser enforces).
+  **Trailing blank-line separator is NOT included** (rule-2
+  violation; same as `PageBreak` / `Lyrics`).
+- `Section.depth: number` — count of `#`s. The `#` characters live at
+  `range.start..range.start + depth` (fixed-offset carve-out).
 
 ### Synopsis
 
@@ -200,12 +203,10 @@ field; ❌ not recoverable from AST alone.
 
 ### Page break
 
-- `PageBreak.range` ✅ — same two parser issues as `Section`: the
-  parser currently consumes leading whitespace before `===` even
-  though the spec pins it to column 0, and the trailing blank-line
-  separator is NOT included.
-- `===` lives inside `range` (fixed-offset carve-out, once forced
-  to column 0).
+- `PageBreak.range` ✅ — `===` is column-0 by spec (parser enforces).
+  **Trailing blank-line separator is NOT included** (rule-2
+  violation; same as `Section` / `Lyrics`).
+- `===` lives inside `range` (fixed-offset carve-out).
 
 ### Styled text (bold/italics/underline)
 

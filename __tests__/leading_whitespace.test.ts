@@ -92,28 +92,19 @@ describe("leading whitespace — requires column 0 (parser falls through)", () =
     expect(firstKind("~ a lyric\n\n")).toBe("lyrics");
     expect(firstKind("  ~ a lyric\n\n")).toBe("action");
   });
-});
 
-describe("leading whitespace — TODO: parser is currently too permissive", () => {
-  // Per the Fountain spec (and confirmed in Highland), Section (#)
-  // and PageBreak (===) must start at column 0. The parser currently
-  // consumes OptionalBlanks before both markers and accepts indented
-  // forms. These tests pin the *current* (over-permissive) behavior
-  // — when the parser is tightened to match spec, flip the
-  // assertions to expect "action" instead.
-  //
-  // See design/ast_roundtrip_audit.md → "Tighten Section and
-  // PageBreak to reject leading whitespace".
-
-  test("Section (#) — currently accepts leading ws (spec says col 0 only)", () => {
+  test("Section (#) — col 0; indented becomes action", () => {
     expect(firstKind("# Act One\n\n")).toBe("section");
-    // TODO: should be "action" once parser is tightened to spec.
-    expect(firstKind("  # Act One\n\n")).toBe("section");
+    expect(firstKind("  # Act One\n\n")).toBe("action");
   });
 
-  test("PageBreak (===) — currently accepts leading ws (spec says col 0 only)", () => {
+  test("PageBreak (===) — col 0; indented does not parse as page break", () => {
     expect(firstKind("===\n\n")).toBe("page-break");
-    // TODO: should be "action" once parser is tightened to spec.
-    expect(firstKind("  ===\n\n")).toBe("page-break");
+    // Indented `===` falls through to Synopsis, which also has its
+    // own leading-ws permissiveness (`  =text` is a synopsis with
+    // `=text` as content). The thing being pinned here is that
+    // PageBreak rejects leading ws — what it falls through to is
+    // a separate concern.
+    expect(firstKind("  ===\n\n")).not.toBe("page-break");
   });
 });
