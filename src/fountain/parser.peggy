@@ -176,7 +176,7 @@ CharacterExtensions
  = ([ \t]* "(" [^)\n]* ")")*  { return range() }
 
 Character
- = name:MaybeName &{ return name.toUpperCase() === name } { return range() }
+ = name:MaybeName &{ return /[A-Za-z]/.test(name) && name.toUpperCase() === name } { return range() }
  / "@" [^(\n]+        { return range() }
 
 MaybeName

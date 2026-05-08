@@ -545,6 +545,54 @@ We need gas.
   );
 });
 
+describe("Boneyard parsing", () => {
+  // Regression: previously `/*` was matched as a Character because the
+  // toUpperCase predicate didn't require any letters, so the lines below
+  // were swallowed as dialogue and the boneyard rule never fired.
+  test_script(
+    "multi-line boneyard at top of document is parsed as a boneyard, not dialogue",
+    "/*\nthis should be boneyard\n*/\n\nbut it isn't\n",
+    [
+      {
+        kind: "action",
+        lines: [
+          { elements: [{ kind: "boneyard" }] },
+          { elements: [] },
+          { elements: [{ kind: "text" }] },
+        ],
+      },
+    ],
+  );
+
+  test_script(
+    "multi-line boneyard after a forced scene heading",
+    ".SCENE\n\n/*\nthis should be boneyard\n*/\n\nbut it isn't\n",
+    [
+      { kind: "scene" },
+      {
+        kind: "action",
+        lines: [
+          { elements: [{ kind: "boneyard" }] },
+          { elements: [] },
+          { elements: [{ kind: "text" }] },
+        ],
+      },
+    ],
+  );
+
+  test_script(
+    "purely numeric line is not a character (spec: names must include a letter)",
+    "23\nshould not be dialogue\n",
+    [{ kind: "action" }],
+  );
+
+  test_script(
+    "R2D2 is a valid character name (spec example)",
+    "R2D2\nBeep boop.\n",
+    [{ kind: "dialogue", source: "R2D2\nBeep boop.\n" }],
+  );
+});
+
 describe("Emphasis in actions", () => {
   test_script(
     "From the spec",

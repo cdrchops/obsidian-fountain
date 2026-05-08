@@ -1,5 +1,9 @@
 # Changelog
 
+## [0.32.1] - Boneyard at start of paragraph
+
+- **Fix**: A multi-line boneyard (`/* … */`) that opens its own paragraph is now correctly treated as boneyard. Previously the parser accepted `/*` as a character name (the uppercase predicate didn't require any letters), so `/*\n…\n*/` followed by content was swallowed as Dialogue and never reached the boneyard rule. The `Character` predicate now requires at least one alphabetical character, matching the Fountain spec ("R2D2 works, but 23 does not").
+
 ## [0.32.0] - Fountain Links Create `.fountain` Files
 
 - **Following an unresolved `foo.fountain` link now creates `foo.fountain`**, not `foo.fountain.md`. Applies both to `[[>foo.fountain]]` from a fountain file (handled directly in the plugin's link click handler) and to `[[foo.fountain]]` / `[foo.fountain](foo.fountain)` from a markdown file (Obsidian's core handler still creates `foo.fountain.md`, but a vault listener immediately renames the empty file and a workspace listener swaps any leaf still showing it as markdown onto the registered fountain view).
