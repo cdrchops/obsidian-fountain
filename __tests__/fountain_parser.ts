@@ -593,6 +593,113 @@ describe("Boneyard parsing", () => {
   );
 });
 
+describe("Forced character (@-prefix)", () => {
+  test_script(
+    "@McCLANE is a valid forced character (spec example, mixed case)",
+    "@McCLANE\nYippee-ki-yay.\n",
+    [{ kind: "dialogue", source: "@McCLANE\nYippee-ki-yay.\n" }],
+  );
+
+  // Highland accepts `@123` as a character — the `@` prefix is a
+  // "trust me, this is a character" override (necessary for non-Roman
+  // scripts where the spec's letter requirement wouldn't apply anyway).
+  test_script(
+    "@123 is accepted as a forced character (matches Highland)",
+    "@123\nThis is dialogue\n",
+    [{ kind: "dialogue", source: "@123\nThis is dialogue\n" }],
+  );
+});
+
+describe("Scene heading prefixes", () => {
+  test_script("EST.", "EST. THE LAKE - DAY\n\n", [{ kind: "scene" }]);
+  test_script("I/E with space separator", "I/E HOUSE - NIGHT\n\n", [
+    { kind: "scene" },
+  ]);
+  test_script("INT/EXT (no period)", "INT/EXT CAR - DAY\n\n", [
+    { kind: "scene" },
+  ]);
+  test_script("INT./EXT.", "INT./EXT. CAR - DAY\n\n", [{ kind: "scene" }]);
+  test_script("lowercase int. is recognized (case-insensitive)", "int. house - day\n\n", [
+    { kind: "scene" },
+  ]);
+});
+
+describe("Emphasis edge cases", () => {
+  test_script("bold-italic ***foo*** nests italics inside bold", "***foo***", [
+    {
+      kind: "action",
+      lines: [
+        {
+          elements: [
+            {
+              kind: "bold",
+              elements: [{ kind: "italics", elements: [{ kind: "text" }] }],
+            },
+          ],
+        },
+      ],
+    },
+  ]);
+
+  test_script(
+    "underline nested inside bold",
+    "**bold _and underlined_ here**",
+    [
+      {
+        kind: "action",
+        lines: [
+          {
+            elements: [
+              {
+                kind: "bold",
+                elements: [
+                  { kind: "text" },
+                  { kind: "underline", elements: [{ kind: "text" }] },
+                  { kind: "text" },
+                ],
+              },
+            ],
+          },
+        ],
+      },
+    ],
+  );
+});
+
+describe("Note multi-line behavior", () => {
+  // Per spec: a true blank line (\n\n) terminates a note. A "blank" line
+  // with at least one whitespace char on it does not (so the note continues).
+  test_script(
+    "note continues across a two-space blank line",
+    "[[ foo\n  \nbar ]]\n",
+    [
+      {
+        kind: "action",
+        lines: [
+          {
+            elements: [{ kind: "note", range: { start: 0, end: 16 } }],
+          },
+        ],
+      },
+    ],
+  );
+
+  test_script(
+    "note terminates at a true blank line; trailing ]] is plain text",
+    "[[ foo\n\nbar ]]\n",
+    [
+      {
+        kind: "action",
+        lines: [
+          { elements: [{ kind: "note" }] },
+          { elements: [] },
+          { elements: [{ kind: "text" }] },
+        ],
+      },
+    ],
+  );
+});
+
 describe("Emphasis in actions", () => {
   test_script(
     "From the spec",
