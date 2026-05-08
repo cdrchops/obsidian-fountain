@@ -84,7 +84,11 @@ export default class FountainPlugin extends Plugin {
         if (!file || file.extension !== "fountain") return;
         this.app.workspace.iterateAllLeaves((leaf) => {
           const view = leaf.view;
-          if (view.getViewType() === VIEW_TYPE_FOUNTAIN) return;
+          // Only convert markdown leaves — Obsidian's right-sidebar views
+          // (backlink, outgoing-link, outline) also expose `view.file` for
+          // the active file, and matching them here would force-convert
+          // them all to FountainView too.
+          if (view.getViewType() !== "markdown") return;
           const viewFile = (view as { file?: TFile }).file;
           if (viewFile?.path !== file.path) return;
           void leaf.setViewState({

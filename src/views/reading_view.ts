@@ -334,29 +334,27 @@ const INDENT = NBSP.repeat(3);
 
 function renderTitlePage(parent: HTMLElement, script: FountainScript): void {
   const titlePage = script.titlePage;
+  if (titlePage === null) return;
 
-  if (titlePage.length > 0) {
-    for (const kv of titlePage) {
-      if (kv.values.length === 1) {
+  for (const kv of titlePage.keyValues) {
+    if (kv.values.length === 1) {
+      parent.createDiv({}, (div) => {
+        div.appendText(`${kv.key}: `);
+        styledTextToHtml(script, div, kv.values[0], {}, true);
+      });
+    } else {
+      parent.createDiv({ text: `${kv.key}: ` });
+      for (const v of kv.values) {
         parent.createDiv({}, (div) => {
-          div.appendText(`${kv.key}: `);
-          styledTextToHtml(script, div, kv.values[0], {}, true);
+          div.appendText(INDENT);
+          styledTextToHtml(script, div, v, {}, true);
         });
-      } else {
-        parent.createDiv({ text: `${kv.key}: ` });
-        for (const v of kv.values) {
-          parent.createDiv({}, (div) => {
-            div.appendText(INDENT);
-            styledTextToHtml(script, div, v, {}, true);
-          });
-        }
       }
-      // blank line
     }
-    renderBlankLine(parent);
-    parent.createEl("hr");
-    renderBlankLine(parent);
   }
+  renderBlankLine(parent);
+  parent.createEl("hr");
+  renderBlankLine(parent);
 }
 
 /**

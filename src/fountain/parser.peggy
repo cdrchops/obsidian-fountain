@@ -12,17 +12,17 @@ const { mergeText } = require("./utils");
 const {
   mkAction, mkBoneyard, mkBold, mkCenteredLine, mkDialogue, mkDialogueLine,
   mkItalics, mkKeyValue, mkLine, mkLyrics, mkNote, mkPageBreak, mkParenthetical,
-  mkRange, mkScene, mkSection, mkSynopsis, mkText, mkTransition, mkUnderline,
+  mkRange, mkScene, mkSection, mkSynopsis, mkText, mkTitlePage, mkTransition, mkUnderline,
   shiftLineStart,
 } = require("./ast");
 
 }}
 
 Script
- = title:TitlePage? script:Element* !. { return new FountainScript(input, title ? title : [], script); }
+ = title:TitlePage? script:Element* !. { return new FountainScript(input, title ?? null, script); }
 
 TitlePage
- = values:KeyValue+ "\n" { return values; }
+ = values:KeyValue+ "\n" { return mkTitlePage(range(), values); }
 
 KeyValue
  = key:Key ":" [ \t]* values:(@InlineValue / @MultiLineValues) { return mkKeyValue(range(), key, values); }

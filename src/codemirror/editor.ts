@@ -140,7 +140,7 @@ class FountainEditorPlugin implements PluginValue {
     const lyrics = Decoration.mark({ class: "lyrics" });
 
     if (fscript.titlePage !== null) {
-      for (const kv of fscript.titlePage) {
+      for (const kv of fscript.titlePage.keyValues) {
         for (const styledText of kv.values) {
           for (const st of styledText) {
             if (st.kind !== "text") {

@@ -18,6 +18,8 @@
 
 **DO NOT READ fonts.css.`** It only contains font-face declarations and wastes precious tokens.
 
+**Run e2e tests before declaring work done.** Unit tests (`npm run test`) cover parser/rendering logic but cannot catch view-layer regressions (Obsidian workspace state, sidebar interactions, programmatic-edit propagation across leaves). Always run `npm run test:e2e` and never propose a commit while it has new failures — if a failure pre-exists on `main`, surface it to the user before continuing.
+
 ## Implementation
 
 TypeScript with functional style. Jest for unit testing (never mock the parser—use `parse()`).

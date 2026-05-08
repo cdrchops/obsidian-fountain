@@ -192,9 +192,21 @@ export type FountainElement =
   | Lyrics
   | PageBreak;
 
+/// `range` covers the full `Key: value` block including the value's
+/// trailing newline. `key` lives at a fixed offset:
+/// `range.start..range.start + key.length`.
 export type KeyValue = {
   key: string;
   values: StyledText[];
+  range: Range;
+};
+
+/// A title page is a block of `Key: value` lines followed by a
+/// blank-line separator. `range` covers the entire block including
+/// that trailing blank line, so deleting `range` from `document`
+/// removes the title page cleanly.
+export type TitlePage = {
+  keyValues: KeyValue[];
   range: Range;
 };
 

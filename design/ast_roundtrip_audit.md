@@ -51,18 +51,16 @@ field; ❌ = not recoverable from AST alone.
 
 ### Title page
 
-- `KeyValue.range` — ✅ covers the whole `Key: value` block.
-- `KeyValue.key` — string, no range. ⚠️ recoverable as
-  `range.start..range.start + key.length`.
+- `TitlePage.range` — ✅ covers the entire title-page block including
+  the trailing blank-line separator between the title page and the
+  body. Deleting `range` from `document` removes the title page
+  cleanly.
+- `TitlePage.keyValues: KeyValue[]` — entries.
+- `KeyValue.range` — ✅ covers the `Key: value` block including its
+  trailing newline. Symmetric across entries — order-independent.
+- `KeyValue.key` — string, fixed offset (`range.start..range.start +
+  key.length`). No separate range; documented in `types.ts`.
 - `KeyValue.values` — `StyledText[]`. Inner elements have ranges.
-- The `\n` separator that `TitlePage` consumes between the last
-  `KeyValue` and the first `Element`: ❌ **gap**. Not in any range.
-  The only place where the AST cannot reproduce a source byte.
-
-**Action:** consider extending the last `KeyValue.range` to include
-the separator newline, or adding a `titlePage.range` covering the
-whole title page. Low priority — round-trip from `document` always
-works.
 
 ### Scene heading
 
@@ -109,8 +107,10 @@ and live at line boundaries.
 - `Dialogue.characterRange` — ✅
 - `Dialogue.characterExtensionsRange` — ✅
 - `Dialogue.content: DialogueContent[]` — each has a range.
-- `Dialogue.caretRange` — ✅ (per dual-dialogue plan; not yet
-  implemented).
+- `Dialogue.caretRange` — ✅ `Range | null`, covers the `^` of a dual
+  dialogue. There is no separate `dual` boolean for this marker —
+  the range alone is the source of truth (the AST's `dual: boolean`
+  field is a derived property of pairing, set after parsing).
 
 ### Parenthetical
 
@@ -186,36 +186,79 @@ The recurring gap: forced markers (`!` action, `.` scene, `>`
 transition, `@` character, `~` lyrics, `^` dual-dialogue) all live
 inside their element's range without a separate range field. Most of
 the time this is fine. But every "I want to style/highlight just the
-marker" feature has had to do offset arithmetic. The dual-dialogue
-plan introduces `caretRange` for `^`; the consistent move is to do
-the same for the other markers when there's demand.
+marker" feature has had to do offset arithmetic. `caretRange` for `^`
+already does this for dual dialogue; the consistent move is to do the
+same for the other markers when there's demand.
 
-A pattern: `<elementName>MarkerRange: Range | null` on each element
-that has a forced marker. `null` when not forced.
+**Pattern:** `forcedMarker: Range | null` on each element that has a
+forced marker. `null` when not forced. Do **not** carry both a
+`forced: boolean` AND a range — that's two sources of truth that can
+get out of sync. The range existing is the signal that the marker is
+present (mirrors how `caretRange` already works on `Dialogue`).
+
+When adding the field, drop the existing `forced: boolean` in the
+same change. Call sites become `if (action.forcedMarker)` instead of
+`if (action.forced)` — no real readability loss.
 
 ## Decisions / TODOs
 
 In rough priority order:
 
-- [ ] **Dual dialogue `caretRange`** — covered by the dual dialogue
-  plan; do it as part of that work.
-- [ ] **Title page separator newline** — close the gap by extending
-  the last `KeyValue.range` to include the `\n`, or add a
-  `titlePage.range`. Low priority; no consumer breaks today.
-- [ ] **Forced-marker ranges** — pattern: `forcedMarkerRange: Range |
-  null` on Action/Scene/Transition. Add when a feature actually wants
-  them. Not now.
+- [x] **Dual dialogue `caretRange`** — done as part of the dual
+  dialogue work. Range-only, no `dual` boolean for the marker.
+- [x] **Title page block as its own AST node** — closed by introducing
+  `TitlePage { keyValues, range }`. `range` covers the whole block
+  including the trailing blank-line separator; `KeyValue.range`
+  reverts to symmetric per-entry coverage with no order-dependent
+  asymmetry.
+- [ ] **Audit other line-based elements against the principle below.**
+  Specifically: does every line-based element's `range` start at
+  column 0 of its first line (including leading whitespace) and end
+  after its trailing blank-line separator? Likely outliers:
+  - `ForcedActionLine` shifts start by `-1` for the `!` but doesn't
+    extend further left for any whitespace.
+  - Multi-line `Action`/`Dialogue`/`Lyrics`/`Synopsis` need a check
+    for trailing-blank-line inclusion.
+- [ ] **Forced-marker ranges** — pattern: `forcedMarker: Range | null`
+  on Action/Scene/Transition (replacing the `forced: boolean`, not
+  alongside it). Add when a feature actually wants them. Not now.
 - [ ] **Styled-text marker ranges** — similar; add when the editor
   wants to dim `**…**` markers vs. the bold text inside.
 
-## Standing rule
+## Standing rules
 
-When adding new syntax to the parser:
+### Range coverage
 
-> If a piece of source text is syntactically significant (a marker, a
-> delimiter, an attribute) — give it a `Range` in the AST. Don't make
-> consumers compute it from offsets.
+> If a piece of source text is syntactically significant *and* its
+> position isn't trivially derivable from the element's range plus a
+> fixed-length marker, give it a `Range` in the AST. For optional
+> markers, prefer `Range | null` over a separate boolean — don't
+> carry both, since that's two sources of truth that can drift.
 
-Add this to the parser-grammar comment block at the top of
-`parser.peggy` once we've done one or two of the audit items above
-and the pattern is established.
+The "fixed-length, fixed-offset" carve-out covers things like the `#`
+prefix of a `Section` (always at `range.start`, length `depth`) or
+the `===` of a `PageBreak` — document the offset in `types.ts` rather
+than duplicating it as a range.
+
+### Line-based elements
+
+> For any element that occupies one or more whole source lines, its
+> `range` covers from the start of its first line (column 0, before
+> any leading whitespace) through the end of its trailing
+> blank-line separator (or to EOF if last). Inline elements (notes,
+> styled text, parentheticals) keep tight ranges around the syntax
+> itself.
+
+The invariant this gives you: **deleting `range` from `document`
+removes the element cleanly with no orphan whitespace or stray blank
+lines.** Adjacent elements never overlap or leave gaps; trailing
+whitespace and the blank-line separator belong to the element that
+ends, not the one that starts.
+
+`SceneHeading.range` already does this for the trailing-blank-line
+side (per its comment). `TitlePage.range` does it for both. The
+remaining elements need an audit (see the TODO above).
+
+Add these rules to the parser-grammar comment block at the top of
+`parser.peggy` once we've worked through the audit items above and
+the patterns are established.

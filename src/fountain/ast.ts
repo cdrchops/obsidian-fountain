@@ -18,6 +18,7 @@ import type {
   StyledTextElement,
   Synopsis,
   TextElementWithNotesAndBoneyard,
+  TitlePage,
   Transition,
 } from "./types";
 
@@ -156,4 +157,11 @@ export function mkKeyValue(
   values: StyledText[],
 ): KeyValue {
   return { range, key, values };
+}
+
+export function mkTitlePage(
+  range: Range,
+  keyValues: KeyValue[],
+): TitlePage {
+  return { range, keyValues };
 }

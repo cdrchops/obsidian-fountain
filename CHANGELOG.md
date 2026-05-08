@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.33.1] - Right Sidebar Hijack Fix
+
+- **Fix**: Opening a `.fountain` file no longer force-converts the right sidebar's `outline`, `backlink`, and `outgoing-link` views into fountain script views. The auto-rename handler that catches markdown leaves accidentally pointed at `.fountain` files (introduced in 0.32.0) was iterating *all* leaves and matching any view whose `.file` happened to track the active file — which is exactly what the right-sidebar reference views do. Restricted to `markdown` view types only, matching the original intent.
+- **Internal**: `FountainScript.titlePage` is now `TitlePage | null` (previously `KeyValue[]`), with `TitlePage.range` covering the whole title-page block including its trailing blank-line separator. Establishes the convention that line-based AST elements own their trailing blank line so that deleting `range` from `document` cuts cleanly. Documented in `design/ast_roundtrip_audit.md`.
+
 ## [0.33.0] - Dual Dialogue
 
 - **Dual dialogue (`^` marker)**: Two characters speaking simultaneously now render side-by-side in the readonly view and PDF. Mark the second of two consecutive dialogues with a trailing `^` (e.g. `STEEL ^`) and the pair gets two columns. The first dialogue carries no marker, matching the Fountain spec.

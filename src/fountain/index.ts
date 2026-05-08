@@ -28,6 +28,7 @@ export {
   type Lyrics,
   type FountainElement,
   type KeyValue,
+  type TitlePage,
   type Snippet,
   type Snippets,
   type ScriptStructure,

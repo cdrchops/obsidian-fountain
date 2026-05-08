@@ -1,7 +1,6 @@
 import type {
   Dialogue,
   FountainElement,
-  KeyValue,
   Line,
   Note,
   PageBreak,
@@ -9,6 +8,7 @@ import type {
   ScriptStructure,
   Snippets,
   TextElementWithNotesAndBoneyard,
+  TitlePage,
 } from "./types";
 import { StructureScene, StructureSection } from "./types";
 import {
@@ -19,14 +19,14 @@ import {
 } from "./utils";
 
 export class FountainScript {
-  readonly titlePage: KeyValue[];
+  readonly titlePage: TitlePage | null;
   readonly script: FountainElement[];
   readonly document: string;
   readonly allCharacters: Set<string>;
 
   constructor(
     document: string,
-    titlePage: KeyValue[],
+    titlePage: TitlePage | null,
     script: FountainElement[],
   ) {
     this.document = document;

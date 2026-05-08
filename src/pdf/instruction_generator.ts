@@ -193,7 +193,7 @@ export function generateInstructions(
     pageWidth: paperSize.width,
     pageHeight: paperSize.height,
     isTitlePage: true,
-    documentHasTitlePage: fountainScript.titlePage.length > 0,
+    documentHasTitlePage: fountainScript.titlePage !== null,
     margins: {
       top: verticalMargins.top,
       bottom: verticalMargins.bottom,
@@ -210,7 +210,7 @@ export function generateInstructions(
   currentState = emitNewPage(instructions, currentState);
 
   // Generate title page instructions if it exists
-  if (fountainScript.titlePage.length > 0) {
+  if (fountainScript.titlePage !== null) {
     currentState = generateTitlePageInstructions(
       instructions,
       currentState,
@@ -374,7 +374,7 @@ function generateTitlePageInstructions(
   const lowerRightElements: { key: string; values: StyledText[] }[] = [];
 
   // Categorize title page elements
-  for (const element of fountainScript.titlePage) {
+  for (const element of fountainScript.titlePage?.keyValues ?? []) {
     const keyLower = element.key.toLowerCase();
     if (centeredKeys.has(keyLower)) {
       centeredElements.push(element);

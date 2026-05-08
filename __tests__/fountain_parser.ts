@@ -21,7 +21,7 @@ function testTitlePage(
 ): void {
   test(label, () => {
     const script: FountainScript = parse(input, {});
-    expect(script.titlePage).toMatchObject(expected);
+    expect(script.titlePage?.keyValues).toMatchObject(expected);
   });
 }
 
