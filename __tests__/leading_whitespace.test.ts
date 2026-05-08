@@ -1,5 +1,5 @@
 // Pins the leading-whitespace behavior of every line-based element.
-// Audited and documented in design/ast_roundtrip_audit.md (rule 2).
+// Rules documented in src/fountain/types.ts (rule 2).
 //
 // These tests exist because the same coverage was previously implicit
 // across dozens of unrelated tests — refactors could drop it without

@@ -5,6 +5,13 @@
 // than the spec.  In particular in some cases we want to recognize partial
 // constructs, so that during interactive / incremental use, the right thing
 // happens (TM).
+//
+// AST design rules (every-span-has-a-range, line-based-elements-own-
+// their-lines, optional-markers-as-Range-or-null) are documented in
+// `types.ts` near the AST element type definitions. When adding new
+// syntax, check those rules and the contracts pinned by tests in
+// `__tests__/{leading_whitespace,trailing_blank_line,
+// structural_marker_mid_paragraph}.test.ts`.
 
 {{
 const { FountainScript } = require("./script");
@@ -103,6 +110,10 @@ PageBreakPattern
 // appears mid-paragraph so the marker isn't silently absorbed.
 // PageBreak (`===`) is handled by `PageBreakPattern` separately;
 // the order in `Element` ensures it wins for `===`-prefixed lines.
+//
+// TODO: extend with `~` (Lyrics) and the scene-heading prefixes
+// (`INT.`/`EXT.`/`.SCENE`/etc.) when we want those recognized
+// mid-paragraph too.
 StructuralMarkerStart
  = "#" / "="
 

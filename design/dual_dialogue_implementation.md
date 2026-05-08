@@ -333,9 +333,9 @@ This is the same pattern as `scene.heading` / `scene.forced` /
 the "user typed `.`" fact is in `forced`, and the source is
 recoverable from the element range.
 
-See `design/ast_roundtrip_audit.md` for the broader question of
-making "every syntactically-significant span has a range" a stated
-project invariant.
+The "every syntactically-significant span has a range" rule is now
+stated as rule 1 in the AST design rules block at the top of
+`src/fountain/types.ts`.
 
 ## Implementation order
 

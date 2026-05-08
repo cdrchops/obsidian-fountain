@@ -48,6 +48,10 @@ export type BasicTextElement = {
   kind: "text";
 };
 
+// TODO (rule 1): if the editor wants to dim the `*`/`**`/`_`
+// markers separately from the styled text inside them, add explicit
+// `openMarker`/`closeMarker` ranges. Today they live inside `range`
+// but aren't broken out.
 export type StyledTextElement = {
   range: Range;
   kind: "bold" | "italics" | "underline";
@@ -87,22 +91,47 @@ export type Line = {
 // ============================================================================
 // Fountain AST Element Types
 // ============================================================================
-
-// In all the fountain element AST types, range is always
-// the range of the complete element (so if you wanted to
-// remove the complete element deleting all text of that
-// range would work).
 //
-// IMPORTANT: For scene headings, the range includes the trailing
-// newline characters required by the Fountain spec (a scene heading
-// must be followed by a blank line). This means scene heading ranges
-// include: heading text + line ending + blank line (two \n characters).
-// This is crucial for operations like folding, syntax highlighting,
-// and position-based queries.
+// Three rules govern how AST nodes relate to source positions. They
+// guide future syntax additions and refactors. Pinned by tests in
+// __tests__/{leading_whitespace,trailing_blank_line,
+// structural_marker_mid_paragraph}.test.ts.
 //
-// SPECIAL CASE: Scene headings at the end of the document may have
-// fewer trailing newlines (for interactive editing feedback), but
-// these incomplete headings typically have no content to fold anyway.
+// RULE 1 — Every significant span has a range. If a piece of source
+// text is syntactically significant *and* its position isn't trivially
+// derivable from the element's range plus a fixed-length marker, give
+// it a `Range` field. Consumers shouldn't have to scan `document` for
+// "where's the `^` of this dual dialogue?". Carve-out: `#` (Section,
+// length = `depth`) and `===` (PageBreak) live at known offsets inside
+// `range` and don't need separate fields.
+//
+// RULE 2 — Line-based elements own their lines. For elements that
+// introduce paragraph spacing (Action, Dialogue, Lyrics, Scene
+// heading, Transition, TitlePage), `range` covers from column 0 of
+// the first line (including any leading whitespace) through the end
+// of the trailing blank-line separator (or to EOF if last). Inline
+// elements (notes, styled text, parentheticals) keep tight ranges
+// around the syntax itself.
+//
+// Invariant: deleting `range` from `document` removes the element
+// cleanly — no orphan whitespace, no stray blank lines. Trailing
+// blank lines belong to the element that ends, not the one that
+// starts, so adjacent elements never overlap or leave gaps.
+//
+//   Structural-marker carve-out: `Section`, `Synopsis`, and
+//   `PageBreak` render as invisible structural markers (Highland
+//   confirms — surrounding action paragraphs flow as if they
+//   weren't there). Their `range` covers only the marker line.
+//   Adjacent blank lines belong to the surrounding paragraph
+//   context, not to the marker.
+//
+// RULE 3 — Optional markers as `Range | null`, never alongside a
+// boolean. The range existing is the signal that the marker is
+// present (mirrors how `Dialogue.caretRange` works). Don't carry
+// both a `forced: boolean` AND a range — two sources of truth that
+// can drift. The `forced: boolean` fields on `SceneHeading` and
+// `Transition` are debt to replace when a feature actually needs the
+// range (see TODOs on those types).
 export type PageBreak = {
   kind: "page-break";
   range: Range;
@@ -131,6 +160,9 @@ export type SceneHeading = {
   kind: "scene";
   range: Range;
   heading: string;
+  // TODO: replace with `forcedMarker: Range | null` per rule 3 when a
+  // feature needs the range. The `.` of a forced scene heading lives
+  // inside `range` but isn't separately broken out.
   forced: boolean;
   number: Range | null;
 };
@@ -138,6 +170,10 @@ export type SceneHeading = {
 export type Transition = {
   kind: "transition";
   range: Range;
+  // TODO: replace with `forcedMarker: Range | null` per rule 3 when a
+  // feature needs the range. The `>` of a forced transition lives
+  // inside `range` but isn't separately broken out;
+  // `extractTransitionText` strips it via string trimming.
   forced: boolean;
 };
 

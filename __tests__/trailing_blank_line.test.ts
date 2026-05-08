@@ -1,10 +1,10 @@
 // Pins which elements own their trailing blank-line separator
-// (rule 2 in design/ast_roundtrip_audit.md).
+// (rule 2 in src/fountain/types.ts).
 //
-// Paragraph-block elements (Action, Dialogue, Synopsis-no-wait-that's-
-// structural, Lyrics, Scene heading, Transition, TitlePage) include
-// the `\n\n` after themselves so that deleting `range` cuts cleanly
-// without orphaning a stray blank line on the next element.
+// Paragraph-block elements (Action, Dialogue, Lyrics, Scene heading,
+// Transition, TitlePage) include the `\n\n` after themselves so that
+// deleting `range` cuts cleanly without orphaning a stray blank line
+// on the next element.
 //
 // Structural markers (Section, Synopsis, PageBreak) do NOT — they
 // render invisibly and the surrounding blank lines belong to the
