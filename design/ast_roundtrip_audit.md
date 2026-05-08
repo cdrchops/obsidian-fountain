@@ -78,7 +78,7 @@ whitespace isn't expected to belong to the range):
 | `Action` (plain) | ✅ (folded into text) | ✅ |
 | `Action` (forced `!`) | n/a (spec: col 0) | ✅ |
 | `Transition` (forced `>`) | n/a (spec: col 0) | ✅ |
-| `Lyrics` (`~`) | n/a (spec: col 0) | ❌ |
+| `Lyrics` (`~`) | n/a (spec: col 0) | ✅ |
 | `Section` (`#`) | n/a (spec: col 0) | n/a (structural marker) |
 | `Synopsis` (`=`) | n/a (spec: col 0) | n/a (structural marker) |
 | `PageBreak` (`===`) | n/a (spec: col 0) | n/a (structural marker) |
@@ -91,10 +91,10 @@ Concrete fixes worth opening:
   `Section`, `PageBreak`, `PageBreakPattern`, and `SynopsisLine`;
   dropped the trailing `NewLine?` from `Synopsis`. Pinned by
   `__tests__/leading_whitespace.test.ts`.
-- [ ] **`Lyrics` should consume the trailing blank-line separator.**
-  Currently the `\n\n` after a lyrics block is donated to the next
-  element. Lyrics are paragraph-block content (sung lines), not a
-  structural marker, so rule 2 applies.
+- [x] **`Lyrics` consumes the trailing blank-line separator.**
+  Added a `LyricsTerminator` mirroring `ActionTerminator` (consumes
+  one newline / EOI, or sees a page break). Pinned by
+  `__tests__/trailing_blank_line.test.ts`.
 - [ ] **Sections and Synopses appearing mid-action are silently
   swallowed.** `Foo\n# As section\nBar\n` parses as a single Action
   covering all three lines — the marker line is consumed by the
@@ -205,9 +205,8 @@ field; ❌ not recoverable from AST alone.
 ### Lyrics
 
 - `Lyrics.range` ✅ — `~` must be at column 0 per the Fountain spec
-  (matches Highland), so leading whitespace is n/a. **Trailing
-  blank-line separator is NOT included** (rule-2 violation; same
-  as `Section` / `PageBreak`).
+  (matches Highland), so leading whitespace is n/a. Trailing
+  blank-line separator is included (rule 2).
 - `Lyrics.lines: Line[]` ✅
 - `~` markers ⚠️ — inside `Line.range` (which includes `~text`).
 

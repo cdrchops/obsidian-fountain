@@ -213,8 +213,12 @@ OptionalBlanks
  = [ \t]*
 
 Lyrics
- = lines:LyricsLine+
+ = lines:LyricsLine+ LyricsTerminator
  { return mkLyrics(range(), lines); }
+
+LyricsTerminator
+ = &PageBreakPattern
+ / NewLineOrEndOfInput
 
 LyricsLine
  = "~" elements:LineTextElement* newline:("\n" / !.)

@@ -4,7 +4,8 @@
 
 - **Fix**: `# Section` headings, `= synopsis` lines, and `===` page breaks now require their marker at column 0, matching the Fountain spec (and Highland). Previously the parser accepted leading whitespace before all three. An indented `  # heading` / `  = synopsis` is now an action line; an indented `  ===` no longer creates a page break.
 - **Fix**: Synopsis ranges no longer absorb the trailing blank-line separator. Highland treats synopses (like sections) as invisible structural markers — they don't carry paragraph spacing. The blank line after a synopsis now belongs to the next paragraph.
-- **Internal**: New `__tests__/leading_whitespace.test.ts` pins the leading-whitespace contract for every line-based element so future refactors can't silently drift. Audit findings in `design/ast_roundtrip_audit.md`.
+- **Internal**: Conversely, Lyrics ranges now *do* include their trailing blank-line separator (matching Action, Dialogue, and other paragraph-block elements), so deleting a lyrics block via its range cuts cleanly without orphaning a blank line on the next element.
+- **Internal**: New `__tests__/leading_whitespace.test.ts` and `__tests__/trailing_blank_line.test.ts` pin the rule-2 contract (range covers full lines including trailing blank) for every line-based element so future refactors can't silently drift. Audit findings in `design/ast_roundtrip_audit.md`.
 
 ## [0.33.1] - Right Sidebar Hijack Fix
 
