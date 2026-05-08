@@ -815,6 +815,71 @@
 	);
 }
 
+/* Section heading row: the <h{depth}> sits next to a hover-revealed
+   pencil. Flex+baseline keeps the pencil aligned with the heading
+   text regardless of the h-tag's depth. */
+.section-heading-row {
+	display: flex;
+	align-items: baseline;
+	gap: 4px;
+}
+
+.section-heading-row > .section {
+	flex: 1 1 auto;
+	min-width: 0;
+}
+
+.section-heading-row > .pencil-button {
+	flex: 0 0 auto;
+	width: 24px;
+	height: 24px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	color: var(--text-faint);
+	border-radius: 3px;
+	cursor: pointer;
+	opacity: 0;
+	transition: opacity 0.15s ease, color 0.15s ease,
+		background-color 0.15s ease;
+}
+
+.section-heading-row:hover > .pencil-button {
+	opacity: 1;
+}
+
+.section-heading-row > .pencil-button:hover {
+	color: var(--text-normal);
+	background-color: var(--background-modifier-hover);
+}
+
+.section-heading-row > .pencil-button .svg-icon {
+	width: 14px;
+	height: 14px;
+}
+
+/* Inline rename input replaces the <h{depth}>. Computed font metrics
+   are copied onto the input inline (see editSectionHeadingHandler) so
+   it visually matches whichever heading depth it replaces. */
+.section-heading-row > input.section {
+	flex: 1 1 auto;
+	min-width: 0;
+	border: none !important;
+	outline: none !important;
+	padding: 0 !important;
+	border-radius: 0 !important;
+	box-shadow: none !important;
+	background: var(--background-modifier-form-field);
+	box-sizing: border-box;
+	height: auto;
+}
+
+.section-heading-row > input.section:focus {
+	border: none !important;
+	outline: none !important;
+	box-shadow: none !important;
+}
+
 /* PDF Options Dialog */
 .pdf-warning {
 	background-color: var(--background-modifier-error);

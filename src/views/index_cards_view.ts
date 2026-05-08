@@ -2,6 +2,7 @@ import { setIcon } from "obsidian";
 import type {
   FountainScript,
   Range,
+  Section,
   StructureScene,
   StructureSection,
   Synopsis,
@@ -269,6 +270,69 @@ function editSceneHeadingHandler(
   headingInput.focus();
 }
 
+/** Same shape as `editSceneHeadingHandler`, but the input edits only
+ *  the title text — the `#` prefix (length = `section.depth`) and the
+ *  trailing newline (if any) are reattached on commit so depth changes
+ *  (a deferred feature) stay out of the rename path. */
+function editSectionHeadingHandler(
+  row: HTMLElement,
+  script: FountainScript,
+  section: Section,
+  callbacks: ReadonlyViewCallbacks,
+): void {
+  const heading = row.querySelector<HTMLElement>(".section");
+  if (!heading) return;
+  const fullText = script.sliceDocument(section.range);
+  const hasTrailingNewline = fullText.endsWith("\n");
+  // After `depth` `#` characters the parser allows arbitrary whitespace
+  // before the title; collapse it to a single space on rename.
+  const titleText = fullText.slice(section.depth).trim();
+
+  const computed = getComputedStyle(heading);
+  const headingInput = createEl("input", {
+    cls: "section",
+    type: "text",
+    value: titleText,
+  });
+  headingInput.style.fontSize = computed.fontSize;
+  headingInput.style.fontWeight = computed.fontWeight;
+  headingInput.style.fontFamily = computed.fontFamily;
+  headingInput.style.color = computed.color;
+  headingInput.style.lineHeight = computed.lineHeight;
+
+  let committed = false;
+  const commit = () => {
+    if (committed) return;
+    committed = true;
+    const newText =
+      "#".repeat(section.depth) +
+      " " +
+      headingInput.value +
+      (hasTrailingNewline ? "\n" : "");
+    callbacks.replaceText(section.range, newText);
+    callbacks.requestSave();
+    callbacks.reRender();
+  };
+  const cancel = () => {
+    if (committed) return;
+    committed = true;
+    callbacks.reRender();
+  };
+  headingInput.addEventListener("keyup", (event: KeyboardEvent) => {
+    if (event.key === "Escape") {
+      event.preventDefault();
+      cancel();
+    } else if (event.key === "Enter") {
+      event.preventDefault();
+      commit();
+    }
+  });
+  headingInput.addEventListener("blur", () => commit());
+  heading.replaceWith(headingInput);
+  headingInput.focus();
+  headingInput.select();
+}
+
 function renderSynopsis(
   div: HTMLElement,
   script: FountainScript,
@@ -420,9 +484,9 @@ function renderSection(
   callbacks: ReadonlyViewCallbacks,
 ): void {
   if (section.section) {
-    const title = script.sliceDocument(section.section.range);
-    const hTag =
-      `h${section.section.depth ?? 1}` as keyof HTMLElementTagNameMap;
+    const sec = section.section;
+    const title = script.sliceDocument(sec.range);
+    const hTag = `h${sec.depth ?? 1}` as keyof HTMLElementTagNameMap;
     if (
       title
         .toLowerCase()
@@ -431,10 +495,25 @@ function renderSection(
     ) {
       parent.createEl("hr");
     }
-    parent.createEl(hTag, {
-      cls: "section",
-      attr: { "data-start": section.section.range.start },
-      text: title,
+    parent.createDiv({ cls: "section-heading-row" }, (row) => {
+      row.createEl(hTag, {
+        cls: "section",
+        attr: { "data-start": sec.range.start },
+        text: title,
+      });
+      row.createDiv(
+        {
+          cls: "pencil-button",
+          attr: { "aria-label": "Rename section heading" },
+        },
+        (pencil) => {
+          setIcon(pencil, "pencil");
+          pencil.addEventListener("click", (evt: MouseEvent) => {
+            evt.stopPropagation();
+            editSectionHeadingHandler(row, script, sec, callbacks);
+          });
+        },
+      );
     });
   }
   if (section.synopsis) {
