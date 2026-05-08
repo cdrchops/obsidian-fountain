@@ -299,6 +299,10 @@ function editSectionHeadingHandler(
   headingInput.style.fontFamily = computed.fontFamily;
   headingInput.style.color = computed.color;
   headingInput.style.lineHeight = computed.lineHeight;
+  // Without these, the h-tag's browser-default vertical margins
+  // disappear in edit mode and the surrounding cards visibly jump.
+  headingInput.style.marginTop = computed.marginTop;
+  headingInput.style.marginBottom = computed.marginBottom;
 
   let committed = false;
   const commit = () => {

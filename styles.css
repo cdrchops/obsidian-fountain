@@ -859,7 +859,7 @@
 }
 
 .section-heading-row > .section {
-	flex: 1 1 auto;
+	flex: 0 1 auto;
 	min-width: 0;
 }
 
@@ -873,13 +873,19 @@
 	color: var(--text-faint);
 	border-radius: 3px;
 	cursor: pointer;
-	opacity: 0;
+	opacity: 0.35;
 	transition: opacity 0.15s ease, color 0.15s ease,
 		background-color 0.15s ease;
 }
 
 .section-heading-row:hover > .pencil-button {
 	opacity: 1;
+}
+
+/* Hide the pencil while the rename input is in place — otherwise the
+   input's `flex: 1 1 auto` shoves it sideways, which reads as a jump. */
+.section-heading-row:has(> input.section) > .pencil-button {
+	display: none;
 }
 
 .section-heading-row > .pencil-button:hover {
@@ -896,6 +902,8 @@
    are copied onto the input inline (see editSectionHeadingHandler) so
    it visually matches whichever heading depth it replaces. */
 .section-heading-row > input.section {
+	/* Override the heading's `flex: 0 1 auto` — the input needs room
+	   to type into, beyond just the original title's width. */
 	flex: 1 1 auto;
 	min-width: 0;
 	border: none !important;
