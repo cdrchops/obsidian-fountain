@@ -105,6 +105,34 @@ export function extractTransitionText(
   return rawText;
 }
 
+/** Pair up dialogues with caretRange != null with their predecessor.
+ *
+ * Greedy left-to-right: a dialogue D with a caret pairs with the
+ * immediately preceding element only if that element is also a Dialogue
+ * AND that predecessor is not already part of a pair (`dual === false`).
+ * Mutates the elements in place by setting `dual = true` on both members
+ * of each pair.
+ *
+ * Invariant after the pass: for every Dialogue with `dual === true`,
+ * exactly one of its immediate siblings in the list is also a Dialogue
+ * with `dual === true`.
+ */
+export function applyDualPairing(script: FountainElement[]): FountainElement[] {
+  for (const el of script) {
+    if (el.kind === "dialogue") el.dual = false;
+  }
+  for (let i = 0; i < script.length; i++) {
+    const el = script[i];
+    if (el.kind !== "dialogue" || el.caretRange === null) continue;
+    const prev = i > 0 ? script[i - 1] : undefined;
+    if (prev && prev.kind === "dialogue" && !prev.dual) {
+      prev.dual = true;
+      el.dual = true;
+    }
+  }
+  return script;
+}
+
 /** The way the parser works, blank lines can cause separate action elements
  * (as opposed to a single action element containing all the newlines).
  * This merges all subsequent action elements into a single one.

@@ -159,6 +159,15 @@ export type Dialogue = {
   characterRange: Range; /// range of the character line excl extensions excl whitespace at the beginning.
   characterExtensionsRange: Range; /// range of all extensions (empty range if no extensions) including all parentheses
   content: DialogueContent[];
+  /// Range of the `^` dual-dialogue marker if present in source. Always set
+  /// by the parser whenever the source had a caret, regardless of whether
+  /// it formed a valid pair. The range covers exactly the `^` character.
+  caretRange: Range | null;
+  /// Whether this dialogue renders as part of a side-by-side pair. Set by
+  /// `applyDualPairing` in the FountainScript constructor (not the parser).
+  /// Invariant: if `dual` is true, exactly one immediate neighbor in
+  /// `script` is also a Dialogue with `dual: true`.
+  dual: boolean;
 };
 
 export type Section = {

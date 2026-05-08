@@ -270,6 +270,104 @@ describe("PDF Instruction Generation", () => {
       expect(parentheticalInstruction?.x).toBe(234); // PARENTHETICAL_INDENT
     });
 
+    it("should generate two-column instructions for a dual-dialogue pair", () => {
+      const script = parser.parse(
+        "BRICK\nScrew retirement.\n\nSTEEL ^\nScrew retirement.\n",
+      );
+
+      const instructions = generateInstructions(script);
+      const textInstructions = instructions.filter(
+        (inst) => inst.type === "text",
+      ) as TextInstruction[];
+
+      const left = textInstructions.find((inst) => inst.data === "BRICK");
+      const right = textInstructions.find((inst) => inst.data === "STEEL");
+      expect(left).toBeDefined();
+      expect(right).toBeDefined();
+      // Both characters share the same Y (dual-dialogue invariant).
+      expect(left?.y).toBe(right?.y);
+      // Left column character is well to the left of the right column.
+      expect((right?.x ?? 0)).toBeGreaterThan(left?.x ?? 0);
+      // Neither uses the single-column CHARACTER_INDENT (288).
+      expect(left?.x).not.toBe(288);
+      expect(right?.x).not.toBe(288);
+
+      // Both dialogue lines also share Y. The first segment of each
+      // wrapped line lands at the column's dialogue indent.
+      const leftDialogue = textInstructions.find((inst) => inst.x === 108);
+      const rightDialogue = textInstructions.find((inst) => inst.x === 324);
+      expect(leftDialogue).toBeDefined();
+      expect(rightDialogue).toBeDefined();
+      expect(leftDialogue?.y).toBe(rightDialogue?.y);
+    });
+
+    it("should render dual pair to a second page when first doesn't fit", () => {
+      // Fill most of page 1, then add a dual pair that won't fit.
+      const filler = "Some action line.\n\n".repeat(58);
+      const script = parser.parse(
+        `${filler}BRICK\nA.\n\nSTEEL ^\nB.\n`,
+      );
+
+      const instructions = generateInstructions(script);
+      const newPages = instructions.filter(
+        (inst): inst is NewPageInstruction => inst.type === "new-page",
+      );
+      expect(newPages.length).toBeGreaterThanOrEqual(2);
+
+      // Dual pair characters land on the second page (after the second
+      // new-page instruction).
+      const secondNewPageIndex = instructions.indexOf(newPages[1]);
+      const afterSecond = instructions.slice(secondNewPageIndex);
+      const brick = afterSecond.find(
+        (inst) => inst.type === "text" && inst.data === "BRICK",
+      );
+      const steel = afterSecond.find(
+        (inst) => inst.type === "text" && inst.data === "STEEL",
+      );
+      expect(brick).toBeDefined();
+      expect(steel).toBeDefined();
+    });
+
+    it("orphan caret renders as solo single-column dialogue", () => {
+      const script = parser.parse("Action.\n\nSTEEL ^\nLine.\n");
+
+      const instructions = generateInstructions(script);
+      const textInstructions = instructions.filter(
+        (inst) => inst.type === "text",
+      ) as TextInstruction[];
+
+      const character = textInstructions.find((inst) => inst.data === "STEEL");
+      expect(character).toBeDefined();
+      // Single-column CHARACTER_INDENT, not the dual-left position.
+      expect(character?.x).toBe(288);
+    });
+
+    it("each dual column wraps at the narrow column width, not full width", () => {
+      // Long single-line dialogue. In single-column mode it would fit at
+      // 34 chars. Here we want column width ~25; this line is ~40 chars
+      // so it must wrap at least once in each column.
+      const longLine = "this is a long line of dialogue meant to wrap";
+      const src = `BRICK\n${longLine}\n\nSTEEL ^\n${longLine}\n`;
+      const script = parser.parse(src);
+
+      const instructions = generateInstructions(script);
+      const textInstructions = instructions.filter(
+        (inst): inst is TextInstruction => inst.type === "text",
+      );
+
+      // Each column's dialogue should produce at least 2 lines (different Y values).
+      const leftDialogueLines = textInstructions.filter(
+        (inst) => inst.x === 108,
+      );
+      const rightDialogueLines = textInstructions.filter(
+        (inst) => inst.x === 324,
+      );
+      const leftYs = new Set(leftDialogueLines.map((i) => i.y));
+      const rightYs = new Set(rightDialogueLines.map((i) => i.y));
+      expect(leftYs.size).toBeGreaterThanOrEqual(2);
+      expect(rightYs.size).toBeGreaterThanOrEqual(2);
+    });
+
     it("should generate instructions for dialogue with interleaved parentheticals", () => {
       const script = parser.parse(
         "STEEL\n(starting the engine)\nHello.\n(beat)\nGoodbye.\n\n",

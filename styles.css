@@ -226,6 +226,50 @@
 	margin: 0 0 0 0.8in;
 }
 
+/* Dual dialogue: two columns side-by-side. Reset the absolute indents
+   used in single-column dialogue and use column-relative indents instead. */
+.screenplay .dialogue-dual {
+	display: flex;
+	gap: 1em;
+	align-items: flex-start;
+	break-inside: avoid;
+}
+
+.screenplay .dialogue-dual > .dialogue {
+	flex: 1 1 0;
+	min-width: 0;
+}
+
+.screenplay .dialogue-dual .dialogue-character {
+	padding: 0;
+	margin: 0;
+}
+
+.screenplay .dialogue-dual .dialogue-words {
+	width: auto;
+	max-width: 100%;
+	margin-left: 0;
+}
+
+.screenplay .dialogue-dual .dialogue-parenthetical {
+	margin-left: 1ch;
+}
+
+.is-phone .screenplay .dialogue-dual .dialogue-character {
+	padding: 0;
+	margin: 0;
+}
+
+.is-phone .screenplay .dialogue-dual .dialogue-words {
+	margin: 0;
+	width: auto;
+	max-width: 100%;
+}
+
+.is-phone .screenplay .dialogue-dual .dialogue-parenthetical {
+	margin-left: 1ch;
+}
+
 /****** scene headings */
 
 .screenplay .scene-heading-container {
@@ -418,6 +462,18 @@
 
 .screenplay .note-symbol-plus {
 	color: var(--color-green);
+}
+
+/* Dual-dialogue caret marker in the editor. Valid carets (the marker
+   formed a pair) render dimmed; invalid carets (orphan or unpaired)
+   render in error color so the writer can see the marker had no effect. */
+.screenplay .cm-line .dialogue-dual-marker-valid {
+	color: var(--text-faint);
+}
+
+.screenplay .cm-line .dialogue-dual-marker-invalid {
+	color: var(--text-error);
+	font-weight: bold;
 }
 
 .screenplay .note-todo,

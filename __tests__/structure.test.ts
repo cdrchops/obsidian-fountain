@@ -439,6 +439,8 @@ More action here.`;
                       },
                     },
                   ],
+                  caretRange: null,
+                  dual: false,
                 },
                 {
                   range: {
@@ -475,6 +477,8 @@ More action here.`;
                       },
                     },
                   ],
+                  caretRange: null,
+                  dual: false,
                 },
                 {
                   kind: "action",

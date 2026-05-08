@@ -35,6 +35,7 @@ Rehearsal mode blacks out a character's dialogue:
 
 - **scene numbers** (`#1#`, `#1A#`, `#I-1-A#`, etc.) displayed in bold on left and right margins, with commands to automatically add or remove scene numbers
 - **content filtering/removal commands** to create filtered script versions (remove character dialogue, scenes/sections, or element types)
+- **dual dialogue** (`^` marker on the second character) renders as two side-by-side columns in the readonly view and PDF; orphan or unpaired carets show in the editor in the theme's error color so you can see when a `^` had no effect
 - mark notes as todo `[[todo: This is a todo]]`
 - snippets system for reusable content blocks (stored within the document)
 - margin marks for script annotations (`[[@marker]]` syntax) that appear in the margin during reading view
@@ -76,12 +77,6 @@ If you have Custom File Extensions plugin installed and configured to open `.fou
 3. Restart Obsidian
 
 This plugin handles `.fountain` files natively and doesn't require Custom File Extensions to work properly.
-
-## Notably missing
-
-On the todo list with low priority:
-
-- support for dual dialogue
 
 ## Using the Index Card View
 

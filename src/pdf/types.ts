@@ -133,6 +133,16 @@ export const CHARACTER_INDENT = 288; // ~4" (adjusted for new left margin)
 export const DIALOGUE_INDENT = 180; // 2.5" (adjusted for new left margin)
 export const PARENTHETICAL_INDENT = 234; // 3.25" (adjusted for new left margin)
 
+// Dual-dialogue layout (industry standard: two columns, narrower per column)
+export const DUAL_LEFT_DIALOGUE_INDENT = 108; // 1.5" (left margin)
+export const DUAL_LEFT_CHARACTER_INDENT = 156; // ~2.2"
+export const DUAL_LEFT_PARENTHETICAL_INDENT = 132; // ~1.85"
+export const DUAL_RIGHT_DIALOGUE_INDENT = 324; // ~4.5"
+export const DUAL_RIGHT_CHARACTER_INDENT = 372; // ~5.2"
+export const DUAL_RIGHT_PARENTHETICAL_INDENT = 348; // ~4.85"
+export const DUAL_COLUMN_WIDTH_CHARS = 25;
+export const DUAL_COLUMN_PARENTHETICAL_WIDTH_CHARS = 18;
+
 // Title page positioning (calculated dynamically based on page height)
 export function getTitlePageCenterStart(pageHeight: number): number {
   return pageHeight * 0.6;

@@ -12,6 +12,7 @@ import type {
 } from "./types";
 import { StructureScene, StructureSection } from "./types";
 import {
+  applyDualPairing,
   filterDialogueContent,
   maybeEscapeLeadingSpaces,
   mergeConsecutiveActions,
@@ -30,7 +31,7 @@ export class FountainScript {
   ) {
     this.document = document;
     this.titlePage = titlePage;
-    this.script = mergeConsecutiveActions(script);
+    this.script = applyDualPairing(mergeConsecutiveActions(script));
     const characters = new Set<string>();
     for (const el of this.script) {
       switch (el.kind) {

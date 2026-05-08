@@ -36,11 +36,20 @@ import {
   type Instruction,
   type PageState,
   type PreparedDialogue,
+  type PreparedDialogueContentLine,
   type WrappedLine,
   ACTION_INDENT,
   CHARACTER_INDENT,
   DEFAULT_CHARACTERS_PER_LINE,
   DIALOGUE_INDENT,
+  DUAL_COLUMN_PARENTHETICAL_WIDTH_CHARS,
+  DUAL_COLUMN_WIDTH_CHARS,
+  DUAL_LEFT_CHARACTER_INDENT,
+  DUAL_LEFT_DIALOGUE_INDENT,
+  DUAL_LEFT_PARENTHETICAL_INDENT,
+  DUAL_RIGHT_CHARACTER_INDENT,
+  DUAL_RIGHT_DIALOGUE_INDENT,
+  DUAL_RIGHT_PARENTHETICAL_INDENT,
   FONT_SIZE,
   LINE_HEIGHT,
   MARGIN_LEFT,
@@ -53,6 +62,34 @@ import {
   getTitlePageCenterStart,
   getTitlePageCenterX,
 } from "./types";
+
+/**
+ * Where to position each part of a dialogue block. Single-column dialogue
+ * uses one of these; dual dialogue uses two (one per column).
+ */
+type DialogueLayout = {
+  characterX: number;
+  dialogueX: number;
+  parentheticalX: number;
+};
+
+const SINGLE_LAYOUT: DialogueLayout = {
+  characterX: CHARACTER_INDENT,
+  dialogueX: DIALOGUE_INDENT,
+  parentheticalX: PARENTHETICAL_INDENT,
+};
+
+const DUAL_LEFT_LAYOUT: DialogueLayout = {
+  characterX: DUAL_LEFT_CHARACTER_INDENT,
+  dialogueX: DUAL_LEFT_DIALOGUE_INDENT,
+  parentheticalX: DUAL_LEFT_PARENTHETICAL_INDENT,
+};
+
+const DUAL_RIGHT_LAYOUT: DialogueLayout = {
+  characterX: DUAL_RIGHT_CHARACTER_INDENT,
+  dialogueX: DUAL_RIGHT_DIALOGUE_INDENT,
+  parentheticalX: DUAL_RIGHT_PARENTHETICAL_INDENT,
+};
 
 /**
  * Emits margin marks in the left margin at the current Y position.
@@ -219,8 +256,10 @@ function generateScriptInstructions(
   options: PDFOptions,
 ): PageState {
   let currentState = pageState;
+  const elements = fountainScript.script;
 
-  for (const element of fountainScript.script) {
+  for (let i = 0; i < elements.length; i++) {
+    const element = elements[i];
     switch (element.kind) {
       case "scene":
         currentState = generateSceneInstructions(
@@ -240,15 +279,34 @@ function generateScriptInstructions(
           options,
         );
         break;
-      case "dialogue":
-        currentState = generateDialogueInstructions(
-          instructions,
-          currentState,
-          element,
-          fountainScript,
-          options,
-        );
+      case "dialogue": {
+        const next = elements[i + 1];
+        if (
+          element.dual &&
+          next &&
+          next.kind === "dialogue" &&
+          next.dual
+        ) {
+          currentState = generateDualDialogueInstructions(
+            instructions,
+            currentState,
+            element,
+            next,
+            fountainScript,
+            options,
+          );
+          i++;
+        } else {
+          currentState = generateDialogueInstructions(
+            instructions,
+            currentState,
+            element,
+            fountainScript,
+            options,
+          );
+        }
         break;
+      }
       case "transition":
         currentState = generateTransitionInstructions(
           instructions,
@@ -1004,6 +1062,7 @@ function emitDialogueOnCurrentPage(
   instructions: Instruction[],
   pageState: PageState,
   preparedDialogue: PreparedDialogue,
+  layout: DialogueLayout = SINGLE_LAYOUT,
 ): PageState {
   let currentState = pageState;
 
@@ -1013,7 +1072,7 @@ function emitDialogueOnCurrentPage(
     : preparedDialogue.characterLine;
   emitText(instructions, currentState, {
     data: characterName,
-    x: CHARACTER_INDENT,
+    x: layout.characterX,
     bold: false,
     italic: false,
     underline: false,
@@ -1025,41 +1084,121 @@ function emitDialogueOnCurrentPage(
 
   // Emit content lines (interleaved parentheticals and dialogue)
   for (const contentLine of preparedDialogue.contentLines) {
-    if (contentLine.kind === "parenthetical") {
-      emitText(instructions, currentState, {
-        data: contentLine.text,
-        x: PARENTHETICAL_INDENT,
-        bold: false,
-        italic: false,
-        underline: false,
-        color: "black",
-        strikethrough: false,
-        backgroundColor: undefined,
-      });
-    } else {
-      const dialogueLine = contentLine.wrappedLine;
-      if (dialogueLine.segments.length > 0) {
-        let currentX = DIALOGUE_INDENT;
-        for (const segment of dialogueLine.segments) {
-          if (segment.text.length > 0) {
-            currentX = emitText(instructions, currentState, {
-              data: segment.text,
-              x: currentX,
-              bold: segment.bold || false,
-              italic: segment.italic || false,
-              underline: segment.underline || false,
-              color: segment.color || "black",
-              strikethrough: segment.strikethrough || false,
-              backgroundColor: segment.backgroundColor,
-            });
-          }
-        }
-      }
+    emitDialogueContentLine(instructions, currentState, contentLine, layout);
+    currentState = advanceLine(currentState);
+  }
 
-      // Render margin marks in the left margin
-      if (dialogueLine.marginMarks.length > 0) {
-        emitMarginMarks(instructions, currentState, dialogueLine.marginMarks);
+  return {
+    ...currentState,
+    lastElementType: "dialogue",
+  };
+}
+
+/**
+ * Emit a single line of dialogue content (parenthetical or wrapped
+ * dialogue line) at the current Y. Does NOT advance the line cursor.
+ * Shared between single-column and dual-column emission.
+ */
+function emitDialogueContentLine(
+  instructions: Instruction[],
+  pageState: PageState,
+  contentLine: PreparedDialogueContentLine,
+  layout: DialogueLayout,
+): void {
+  if (contentLine.kind === "parenthetical") {
+    emitText(instructions, pageState, {
+      data: contentLine.text,
+      x: layout.parentheticalX,
+      bold: false,
+      italic: false,
+      underline: false,
+      color: "black",
+      strikethrough: false,
+      backgroundColor: undefined,
+    });
+    return;
+  }
+
+  const dialogueLine = contentLine.wrappedLine;
+  if (dialogueLine.segments.length > 0) {
+    let currentX = layout.dialogueX;
+    for (const segment of dialogueLine.segments) {
+      if (segment.text.length > 0) {
+        currentX = emitText(instructions, pageState, {
+          data: segment.text,
+          x: currentX,
+          bold: segment.bold || false,
+          italic: segment.italic || false,
+          underline: segment.underline || false,
+          color: segment.color || "black",
+          strikethrough: segment.strikethrough || false,
+          backgroundColor: segment.backgroundColor,
+        });
       }
+    }
+  }
+
+  if (dialogueLine.marginMarks.length > 0) {
+    emitMarginMarks(instructions, pageState, dialogueLine.marginMarks);
+  }
+}
+
+/**
+ * Emit a side-by-side dual-dialogue pair. Both columns share the same
+ * vertical position; the block advances by max(left, right) lines. v1
+ * does not split a pair across pages: if the pair doesn't fit on the
+ * current page, it ejects to a new page.
+ */
+function emitDualDialogueOnCurrentPage(
+  instructions: Instruction[],
+  pageState: PageState,
+  left: PreparedDialogue,
+  right: PreparedDialogue,
+): PageState {
+  let currentState = pageState;
+
+  // Both character names share the first line.
+  emitText(instructions, currentState, {
+    data: left.characterLine,
+    x: DUAL_LEFT_LAYOUT.characterX,
+    bold: false,
+    italic: false,
+    underline: false,
+    color: "black",
+    strikethrough: false,
+    backgroundColor: undefined,
+  });
+  emitText(instructions, currentState, {
+    data: right.characterLine,
+    x: DUAL_RIGHT_LAYOUT.characterX,
+    bold: false,
+    italic: false,
+    underline: false,
+    color: "black",
+    strikethrough: false,
+    backgroundColor: undefined,
+  });
+  currentState = advanceLine(currentState);
+
+  const maxRows = Math.max(left.contentLines.length, right.contentLines.length);
+  for (let i = 0; i < maxRows; i++) {
+    const leftLine = left.contentLines[i];
+    const rightLine = right.contentLines[i];
+    if (leftLine !== undefined) {
+      emitDialogueContentLine(
+        instructions,
+        currentState,
+        leftLine,
+        DUAL_LEFT_LAYOUT,
+      );
+    }
+    if (rightLine !== undefined) {
+      emitDialogueContentLine(
+        instructions,
+        currentState,
+        rightLine,
+        DUAL_RIGHT_LAYOUT,
+      );
     }
     currentState = advanceLine(currentState);
   }
@@ -1087,6 +1226,53 @@ function generateDialogueInstructions(
     options,
   );
   return emitDialogueInstructions(instructions, pageState, preparedDialogue);
+}
+
+/**
+ * Generates instructions for a dual-dialogue pair. v1 does not split a
+ * pair across pages: if the combined block doesn't fit, the pair ejects
+ * to a new page.
+ */
+function generateDualDialogueInstructions(
+  instructions: Instruction[],
+  pageState: PageState,
+  left: Dialogue,
+  right: Dialogue,
+  fountainScript: FountainScript,
+  options: PDFOptions,
+): PageState {
+  const dualWidths = {
+    dialogue: DUAL_COLUMN_WIDTH_CHARS,
+    parenthetical: DUAL_COLUMN_PARENTHETICAL_WIDTH_CHARS,
+  };
+  const leftPrepared = prepareDialogueData(
+    pageState,
+    left,
+    fountainScript,
+    options,
+    dualWidths,
+  );
+  const rightPrepared = prepareDialogueData(
+    pageState,
+    right,
+    fountainScript,
+    options,
+    dualWidths,
+  );
+
+  const requiredLines =
+    1 +
+    Math.max(leftPrepared.contentLines.length, rightPrepared.contentLines.length);
+
+  let currentState = addElementSpacing(pageState);
+  currentState = needLines(instructions, currentState, requiredLines);
+
+  return emitDualDialogueOnCurrentPage(
+    instructions,
+    currentState,
+    leftPrepared,
+    rightPrepared,
+  );
 }
 
 /**

@@ -30,12 +30,17 @@ export function dialogueRequiredLines(dialogue: PreparedDialogue): number {
 
 /**
  * Prepares dialogue data by extracting and wrapping all text.
+ *
+ * Optional `widths` override the per-line wrap widths. Dual-dialogue
+ * columns pass narrower widths so each column wraps at column width
+ * rather than full-page width.
  */
 export function prepareDialogueData(
   pageState: PageState,
   dialogue: Dialogue,
   fountainScript: FountainScript,
   options: PDFOptions,
+  widths?: { dialogue: number; parenthetical: number },
 ): PreparedDialogue {
   const characterName = fountainScript.document
     .substring(dialogue.characterRange.start, dialogue.characterRange.end)
@@ -57,6 +62,10 @@ export function prepareDialogueData(
 
   const characterLine = characterName + characterExtensions;
 
+  const dialogueWidth = widths?.dialogue ?? pageState.charactersPerLine.dialogue;
+  const parentheticalWidth =
+    widths?.parenthetical ?? pageState.charactersPerLine.parenthetical;
+
   const contentLines: PreparedDialogueContentLine[] = [];
   for (const item of dialogue.content) {
     if (item.kind === "parenthetical") {
@@ -66,7 +75,7 @@ export function prepareDialogueData(
 
       for (const wrappedText of wrapPlainText(
         parentheticalText,
-        pageState.charactersPerLine.parenthetical,
+        parentheticalWidth,
       )) {
         contentLines.push({ kind: "parenthetical", text: wrappedText });
       }
@@ -81,7 +90,7 @@ export function prepareDialogueData(
 
         const wrappedLines = wrapStyledText(
           styledSegments,
-          pageState.charactersPerLine.dialogue,
+          dialogueWidth,
           false,
         );
 

@@ -42,7 +42,7 @@ function renderLyrics(
   }
 }
 
-function renderDialogue(
+function renderDialogueInner(
   parent: HTMLElement,
   dialogue: Dialogue,
   script: FountainScript,
@@ -86,7 +86,54 @@ function renderDialogue(
       renderLines(parent, script, classes, [item.line], false, settings);
     }
   }
+}
+
+function renderDialogue(
+  parent: HTMLElement,
+  dialogue: Dialogue,
+  script: FountainScript,
+  settings: ShowHideSettings,
+  blackoutCharacter?: string,
+): void {
+  renderDialogueInner(parent, dialogue, script, settings, blackoutCharacter);
   renderBlankLine(parent, dialogue.range);
+}
+
+function renderDualDialogue(
+  parent: HTMLElement,
+  left: Dialogue,
+  right: Dialogue,
+  script: FountainScript,
+  settings: ShowHideSettings,
+  blackoutCharacter?: string,
+): void {
+  parent.createDiv(
+    {
+      cls: "dialogue-dual",
+      attr: dataRange({ start: left.range.start, end: right.range.end }),
+    },
+    (container) => {
+      container.createDiv(
+        {
+          cls: "dialogue dialogue-dual-left",
+          attr: dataRange(left.range),
+        },
+        (col) => {
+          renderDialogueInner(col, left, script, settings, blackoutCharacter);
+        },
+      );
+      container.createDiv(
+        {
+          cls: "dialogue dialogue-dual-right",
+          attr: dataRange(right.range),
+        },
+        (col) => {
+          renderDialogueInner(col, right, script, settings, blackoutCharacter);
+        },
+      );
+    },
+  );
+  renderBlankLine(parent, right.range);
 }
 
 function getDataRange(target: HTMLElement, name = "range"): Range | null {
@@ -261,7 +308,24 @@ function renderContent(
   settings: ShowHideSettings,
   blackoutCharacter?: string,
 ): void {
-  for (const el of script.script) {
+  const elements = script.script;
+  for (let i = 0; i < elements.length; i++) {
+    const el = elements[i];
+    if (el.kind === "dialogue" && el.dual) {
+      const next = elements[i + 1];
+      if (next && next.kind === "dialogue" && next.dual) {
+        renderDualDialogue(
+          parent,
+          el,
+          next,
+          script,
+          settings,
+          blackoutCharacter,
+        );
+        i++;
+        continue;
+      }
+    }
     renderElement(parent, el, script, settings, blackoutCharacter);
   }
 }

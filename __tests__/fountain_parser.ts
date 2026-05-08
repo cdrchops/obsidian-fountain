@@ -1188,3 +1188,122 @@ describe("Scene number rendering integration", () => {
     }
   });
 });
+
+describe("Dual dialogue (caret marker)", () => {
+  test("caret with leading space is recorded with caretRange of length 1", () => {
+    const src = "BRICK\nLine.\n\nSTEEL ^\nLine.\n";
+    const script: FountainScript = parse(src, {});
+    expect(script.script).toHaveLength(2);
+    const [first, second] = script.script;
+    expect(first.kind).toBe("dialogue");
+    expect(second.kind).toBe("dialogue");
+    if (first.kind !== "dialogue" || second.kind !== "dialogue") return;
+
+    expect(first.caretRange).toBeNull();
+    expect(second.caretRange).not.toBeNull();
+    if (second.caretRange) {
+      expect(second.caretRange.end - second.caretRange.start).toBe(1);
+      expect(src.slice(second.caretRange.start, second.caretRange.end)).toBe(
+        "^",
+      );
+    }
+    expect(src.slice(second.characterRange.start, second.characterRange.end))
+      .toBe("STEEL");
+    expect(first.dual).toBe(true);
+    expect(second.dual).toBe(true);
+  });
+
+  test("caret with no leading space (BRICK^)", () => {
+    const src = "BRICK\nLine.\n\nSTEEL^\nLine.\n";
+    const script: FountainScript = parse(src, {});
+    const second = script.script[1];
+    expect(second.kind).toBe("dialogue");
+    if (second.kind !== "dialogue") return;
+
+    expect(second.caretRange).not.toBeNull();
+    if (second.caretRange) {
+      expect(src.slice(second.caretRange.start, second.caretRange.end)).toBe(
+        "^",
+      );
+    }
+    expect(src.slice(second.characterRange.start, second.characterRange.end))
+      .toBe("STEEL");
+    expect(second.dual).toBe(true);
+  });
+
+  test("caret after extensions", () => {
+    const src = "BRICK\nLine.\n\nSTEEL (V.O.) ^\nLine.\n";
+    const script: FountainScript = parse(src, {});
+    const second = script.script[1];
+    expect(second.kind).toBe("dialogue");
+    if (second.kind !== "dialogue") return;
+
+    expect(second.caretRange).not.toBeNull();
+    if (second.caretRange) {
+      expect(src.slice(second.caretRange.start, second.caretRange.end)).toBe(
+        "^",
+      );
+    }
+    expect(
+      src.slice(
+        second.characterExtensionsRange.start,
+        second.characterExtensionsRange.end,
+      ),
+    ).toBe("(V.O.)");
+    expect(second.dual).toBe(true);
+  });
+
+  test("caret with no name does not parse as dialogue", () => {
+    const src = "^\nLine.\n";
+    const script: FountainScript = parse(src, {});
+    expect(script.script[0].kind).toBe("action");
+  });
+
+  test("caret in middle of name is part of name (not a marker)", () => {
+    const src = "STEEL ^EXTRA\nLine.\n";
+    const script: FountainScript = parse(src, {});
+    const d = script.script[0];
+    expect(d.kind).toBe("dialogue");
+    if (d.kind !== "dialogue") return;
+    expect(d.caretRange).toBeNull();
+    expect(src.slice(d.characterRange.start, d.characterRange.end)).toBe(
+      "STEEL ^EXTRA",
+    );
+  });
+
+  test("orphan caret (no predecessor dialogue) leaves dual=false", () => {
+    const src = "STEEL ^\nLine.\n";
+    const script: FountainScript = parse(src, {});
+    const d = script.script[0];
+    expect(d.kind).toBe("dialogue");
+    if (d.kind !== "dialogue") return;
+    expect(d.caretRange).not.toBeNull();
+    expect(d.dual).toBe(false);
+  });
+
+  test("non-dialogue between caret and predecessor leaves dual=false", () => {
+    const src = "BRICK\nLine.\n\nAction line.\n\nSTEEL ^\nLine.\n";
+    const script: FountainScript = parse(src, {});
+    const dialogues = script.script.filter((e) => e.kind === "dialogue");
+    expect(dialogues).toHaveLength(2);
+    expect(dialogues[0].kind === "dialogue" && dialogues[0].dual).toBe(false);
+    expect(dialogues[1].kind === "dialogue" && dialogues[1].dual).toBe(false);
+    expect(
+      dialogues[1].kind === "dialogue" && dialogues[1].caretRange,
+    ).not.toBeNull();
+  });
+
+  test("three-in-a-row pairs first two; third is solo with caretRange", () => {
+    const src = "A\nfirst.\n\nB ^\nsecond.\n\nC ^\nthird.\n";
+    const script: FountainScript = parse(src, {});
+    const dialogues = script.script.filter(
+      (e): e is import("../src/fountain").Dialogue => e.kind === "dialogue",
+    );
+    expect(dialogues).toHaveLength(3);
+    expect(dialogues[0].dual).toBe(true);
+    expect(dialogues[1].dual).toBe(true);
+    expect(dialogues[2].dual).toBe(false);
+    expect(dialogues[1].caretRange).not.toBeNull();
+    expect(dialogues[2].caretRange).not.toBeNull();
+  });
+});

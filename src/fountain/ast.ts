@@ -129,6 +129,7 @@ export function mkDialogue(
   characterRange: Range,
   characterExtensionsRange: Range,
   content: DialogueContent[],
+  caretRange: Range | null,
 ): Dialogue {
   return {
     kind: "dialogue",
@@ -136,6 +137,8 @@ export function mkDialogue(
     characterRange,
     characterExtensionsRange,
     content,
+    caretRange,
+    dual: false,
   };
 }
 

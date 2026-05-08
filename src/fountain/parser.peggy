@@ -165,9 +165,16 @@ NewLineOrEndOfInput
  / !.
 
 Dialogue
- = OptionalBlanks character:Character [ \t]* exts:CharacterExtensions "\n"
-  content:DialogueContent
- { return mkDialogue(range(), character, exts, content); }
+ = OptionalBlanks character:Character [ \t]* exts:CharacterExtensions
+   caret:DualMarker? "\n"
+   content:DialogueContent
+ { return mkDialogue(range(), character, exts, content, caret); }
+
+DualMarker
+ = [ \t]* caret:Caret [ \t]* { return caret; }
+
+Caret
+ = "^" { return mkRange(location()); }
 
 Parenthetical
  = OptionalBlanks "(" [^)\n]* ")" "\n" { return range() }
@@ -180,7 +187,20 @@ Character
  / "@" [^(\n]+        { return range() }
 
 MaybeName
- = [^ >\t\n][^(\n]* { return text() }
+ = [^ >\t\n] NameChar* { return text() }
+
+NameChar
+ = !TrailingDualMarker !TrailingSpaceBeforeDualMarker [^(\n]
+
+// The caret marker forms a dual-dialogue indicator; we don't want to
+// pull it (or the whitespace immediately before it) into the character
+// name. Both negative lookaheads peek for `^` followed by optional
+// whitespace and a newline.
+TrailingDualMarker
+ = "^" [ \t]* "\n"
+
+TrailingSpaceBeforeDualMarker
+ = [ \t]+ "^" [ \t]* "\n"
 
 BlankLineOrEndOfInput
  = !.

@@ -34,6 +34,8 @@ class FountainEditorPlugin implements PluginValue {
   private noteMargin: Decoration;
   private noteLink: Decoration;
   private centered: Decoration;
+  private dualMarkerValid: Decoration;
+  private dualMarkerInvalid: Decoration;
 
   constructor(view: EditorView) {
     this.bold = Decoration.mark({ class: "bold" });
@@ -47,6 +49,12 @@ class FountainEditorPlugin implements PluginValue {
     this.noteMargin = Decoration.mark({ class: "note-margin-editor" });
     this.noteLink = Decoration.mark({ class: "fountain-link-editor" });
     this.centered = Decoration.mark({ class: "centered" });
+    this.dualMarkerValid = Decoration.mark({
+      class: "dialogue-dual-marker-valid",
+    });
+    this.dualMarkerInvalid = Decoration.mark({
+      class: "dialogue-dual-marker-invalid",
+    });
     this.decorations = this.buildDecorations(view);
   }
 
@@ -175,6 +183,13 @@ class FountainEditorPlugin implements PluginValue {
               el.characterExtensionsRange.end,
               character,
             );
+            if (el.caretRange) {
+              builder.add(
+                el.caretRange.start,
+                el.caretRange.end,
+                el.dual ? this.dualMarkerValid : this.dualMarkerInvalid,
+              );
+            }
             for (const item of el.content) {
               if (item.kind === "parenthetical") {
                 builder.add(
