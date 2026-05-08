@@ -250,14 +250,27 @@ Plumbing inside `src/pdf/instruction_generator.ts`:
 
 ### CodeMirror (`src/codemirror/editor.ts:172-194`)
 
-Use `caretRange`, not `dual`. The editor styles every `^` the user
-typed, regardless of whether it ended up forming a pair — orphan
-carets get the same dim styling, which is *desirable* (tells the
-writer "yes, your caret was registered, but it had no effect").
+Style every `^` the user typed (anchor on `caretRange`), but
+distinguish valid from invalid based on `dual`:
 
-Add a `.dialogue-dual-marker` decoration class anchored at
-`caretRange`, with a CSS rule that dims it (subtle muted color, not
-visually loud).
+- **Valid** (`caretRange != null && dual === true`): dim/muted color.
+  The marker did its job; no need to draw attention. Matches the
+  treatment of other forced markers we may add ranges for later.
+- **Invalid** (`caretRange != null && dual === false`): **error
+  color** (red, or the theme's error/warning hue). The `^` is in the
+  source but had no effect — orphan caret, predecessor wasn't a
+  Dialogue, or the caret was on a third-in-a-row. The writer needs
+  to know, otherwise they'll wonder why their dual dialogue isn't
+  rendering side-by-side.
+
+Two decoration classes, e.g. `.dialogue-dual-marker-valid` and
+`.dialogue-dual-marker-invalid`, with corresponding CSS in
+`core_styles.css`. The decoration builder reads both `caretRange` and
+`dual` off the `Dialogue` to pick the class.
+
+This is a small but important UX win — without the error color, a
+silent semantic shift (typed `^` but no pair formed) becomes
+debuggable. With it, the writer sees red and knows where to look.
 
 If we want the editor to show the side-by-side layout while editing,
 that's a much bigger lift (CM's line-based decoration model doesn't
@@ -270,18 +283,20 @@ All resolved by the post-pass + `caretRange`/`dual` split:
 
 1. **Orphan caret on first/only dialogue**: parser sets `caretRange`,
    post-pass leaves `dual = false`. Renderer emits a normal solo
-   dialogue. Editor dims the `^`. No warning.
+   dialogue. Editor renders the `^` in **error color** (signal to the
+   writer that the caret had no effect).
 2. **Three-in-a-row** (`A`, `B^`, `C^`): post-pass pairs `(A, B)`
    greedily. At `C`: predecessor `B` is already `dual: true`, so the
    "predecessor must be unpaired" guard refuses; `C.dual` stays false.
-   `caretRange` on `C` is preserved (so the editor still dims the
-   useless `^`). Final state: `(A, B)` is a dual pair, `C` renders
-   solo. This is what Highland appears to do; verify when
-   implementing.
+   `caretRange` on `C` is preserved, and the editor styles `B`'s `^`
+   dim (valid) and `C`'s `^` red (invalid). Final state: `(A, B)` is
+   a dual pair, `C` renders solo. This is what Highland appears to
+   do; verify when implementing.
 3. **Non-dialogue between** (`Action.\n\nSTEEL ^\n…`): predecessor is
    `Action`, not a `Dialogue`, so post-pass leaves `STEEL.dual = false`.
-   Renders solo. Per spec, character lines need a blank line before;
-   if the writer wanted them paired they'd put them adjacent.
+   Renders solo; editor shows the `^` in error color. Per spec,
+   character lines need a blank line before; if the writer wanted
+   them paired they'd put them adjacent.
 4. **Hide-character filter** (`removal_commands.ts`): the filter
    produces a new `FountainElement[]`, which is passed to the
    `FountainScript` constructor — the post-pass *re-runs* on the
@@ -401,6 +416,8 @@ E2E (`test/e2e/specs/dual_dialogue.e2e.ts`, new):
 - **Editor side-by-side preview.** CodeMirror's line model doesn't
   support it cleanly; the readonly view and PDF are the canonical
   presentations.
-- **Linting/warnings for orphan carets.** The dim caret styling is
-  the v1 signal; an explicit warning (sidebar message, etc.) could
-  come later if writers report confusion.
+- **Sidebar/message-level warnings for orphan carets.** The
+  error-colored caret in the editor is the v1 signal — local, visible
+  exactly where the problem is. A list-style "issues" panel could
+  come later if writers want a project-wide view, but it's not
+  needed for the basic UX to work.
