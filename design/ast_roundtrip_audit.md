@@ -95,13 +95,14 @@ Concrete fixes worth opening:
   Added a `LyricsTerminator` mirroring `ActionTerminator` (consumes
   one newline / EOI, or sees a page break). Pinned by
   `__tests__/trailing_blank_line.test.ts`.
-- [ ] **Sections and Synopses appearing mid-action are silently
-  swallowed.** `Foo\n# As section\nBar\n` parses as a single Action
-  covering all three lines — the marker line is consumed by the
-  `Line` fallback in `ActionLine`. Highland recognizes the marker
-  regardless. Likely fix: add a `!SectionPattern !SynopsisPattern`
-  guard to `ActionLine`'s fallback rule (and similarly to
-  `DialogueLine`).
+- [x] **Sections and Synopses appearing mid-paragraph are now
+  recognized.** Added a `StructuralMarkerStart = "#" / "="`
+  lookahead to `ActionLine`/`DialogueLine` (negative guard on the
+  fallback) and to `ActionTerminator`/`DialogueTerminator` (positive
+  terminator). Pinned by
+  `__tests__/structural_marker_mid_paragraph.test.ts`. Note: lyrics
+  and scene headings appearing mid-paragraph are still swallowed —
+  separate audit if needed.
 
 Other open items:
 
@@ -184,8 +185,6 @@ field; ❌ not recoverable from AST alone.
   design** — sections are invisible structural markers (Highland
   renders them as nothing), so they don't carry paragraph spacing.
   See the structural-marker carve-out in rule 2.
-- Known bug: a section appearing mid-action (no preceding blank
-  line) is silently swallowed by Action — see Open work.
 - `Section.depth: number` — count of `#`s. The `#` characters live at
   `range.start..range.start + depth` (fixed-offset carve-out).
 
@@ -196,8 +195,6 @@ field; ❌ not recoverable from AST alone.
   by design** — Highland renders synopses as invisible structural
   markers, same as Section. See the structural-marker carve-out in
   rule 2.
-- Known bug: a synopsis appearing mid-action (no preceding blank
-  line) is silently swallowed by Action — see Open work.
 - `Synopsis.lines: Line[]` ✅ — each line range excludes the leading
   `=` and trailing `\n`.
 - `=` markers ⚠️ — inside `range`.

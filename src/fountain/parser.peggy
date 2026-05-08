@@ -72,7 +72,7 @@ Line
 
 
 DialogueLine
- = !PageBreakPattern @Line
+ = !PageBreakPattern !StructuralMarkerStart @Line
 
 DialogueContentItem
  = p:Parenthetical { return mkParenthetical(p); }
@@ -83,6 +83,7 @@ DialogueContent
 
 DialogueTerminator
  = &PageBreakPattern
+ / &StructuralMarkerStart
  / NewLineOrEndOfInput
 
 EndOfCenteredLine
@@ -92,10 +93,18 @@ ActionLine
  = [ \t]*  ">" [ \t]* elements:(!EndOfCenteredLine @LineTextElement)+ EndOfCenteredLine
    { return mkCenteredLine(range(), mergeText(elements)); }
  / ForcedActionLine
- / !PageBreakPattern @Line
+ / !PageBreakPattern !StructuralMarkerStart @Line
 
 PageBreakPattern
  = "="|3..|
+
+// Lookahead for the start of a structural marker (Section `#`,
+// Synopsis `=`). Used to terminate Action/Dialogue when a marker
+// appears mid-paragraph so the marker isn't silently absorbed.
+// PageBreak (`===`) is handled by `PageBreakPattern` separately;
+// the order in `Element` ensures it wins for `===`-prefixed lines.
+StructuralMarkerStart
+ = "#" / "="
 
 ForcedActionLine
  = "!" line:Line  { return shiftLineStart(line, -1); }
@@ -105,6 +114,7 @@ ActionLines
 
 ActionTerminator
  = &PageBreakPattern
+ / &StructuralMarkerStart
  / NewLineOrEndOfInput
 
 Transition
