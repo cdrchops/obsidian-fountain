@@ -62,11 +62,13 @@ Other multi-line elements need an audit (see Open work).
 should follow when a feature actually needs them, dropping the
 existing `forced: boolean` in the same change.
 
-## Open work
+## Rule-2 conformance
 
-Rule-2 status (audited by parsing representative inputs and comparing
-ranges; "n/a" means the spec pins the marker to column 0, so leading
-whitespace isn't expected to belong to the range):
+Snapshot of where each line-based element stands against rule 2.
+"n/a" means the spec pins the marker to column 0 (so leading
+whitespace can't belong to the range) or the element is a
+structural marker (so trailing blank lines belong to the
+surrounding paragraph context, not to the marker).
 
 | Element | Leading ws | Trailing blank line |
 |---|---|---|
@@ -83,29 +85,12 @@ whitespace isn't expected to belong to the range):
 | `Synopsis` (`=`) | n/a (spec: col 0) | n/a (structural marker) |
 | `PageBreak` (`===`) | n/a (spec: col 0) | n/a (structural marker) |
 
-Concrete fixes worth opening:
+## Open work
 
-- [x] **Tightened `Section`, `PageBreak`, and `Synopsis` to reject
-  leading whitespace and (for the structural markers) not consume
-  the trailing blank line.** Dropped `OptionalBlanks` from
-  `Section`, `PageBreak`, `PageBreakPattern`, and `SynopsisLine`;
-  dropped the trailing `NewLine?` from `Synopsis`. Pinned by
-  `__tests__/leading_whitespace.test.ts`.
-- [x] **`Lyrics` consumes the trailing blank-line separator.**
-  Added a `LyricsTerminator` mirroring `ActionTerminator` (consumes
-  one newline / EOI, or sees a page break). Pinned by
-  `__tests__/trailing_blank_line.test.ts`.
-- [x] **Sections and Synopses appearing mid-paragraph are now
-  recognized.** Added a `StructuralMarkerStart = "#" / "="`
-  lookahead to `ActionLine`/`DialogueLine` (negative guard on the
-  fallback) and to `ActionTerminator`/`DialogueTerminator` (positive
-  terminator). Pinned by
-  `__tests__/structural_marker_mid_paragraph.test.ts`. Note: lyrics
-  and scene headings appearing mid-paragraph are still swallowed —
-  separate audit if needed.
-
-Other open items:
-
+- [ ] **Lyrics and Scene headings appearing mid-paragraph are still
+  swallowed.** Same family as the Section/Synopsis fix
+  (`StructuralMarkerStart` lookahead) — extend the lookahead with
+  `~` and the scene-heading prefixes when needed.
 - [ ] **Forced-marker ranges** on Action/Scene/Transition. Replace
   `forced: boolean` per rule 3. Add when a feature wants them.
 - [ ] **Styled-text marker ranges** for `*`/`**`/`_`. Add when the
