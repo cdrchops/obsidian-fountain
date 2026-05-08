@@ -747,13 +747,13 @@ describe("Emphasis in actions", () => {
 });
 
 describe("Synopsis handling", () => {
-  test_script("A single line of synopsis", " = A synopsis\n", [
+  test_script("A single line of synopsis", "= A synopsis\n", [
     {
       kind: "synopsis",
-      range: { start: 0, end: 14 },
+      range: { start: 0, end: 13 },
       lines: [
         {
-          range: { start: 2, end: 13 },
+          range: { start: 1, end: 12 },
           centered: false,
           elements: [{ kind: "text" }],
         },
@@ -762,26 +762,26 @@ describe("Synopsis handling", () => {
   ]);
   test_script(
     "Multiple lines",
-    ` = A synopsis
- = Consisting of several lines
-= With and without leading spaces`,
+    `= A synopsis
+= Consisting of several lines
+= All starting at column 0`,
     [
       {
         kind: "synopsis",
-        range: { start: 0, end: 78 },
+        range: { start: 0, end: 69 },
         lines: [
           {
-            range: { start: 2, end: 13 },
+            range: { start: 1, end: 12 },
             centered: false,
             elements: [{ kind: "text" }],
           },
           {
-            range: { start: 16, end: 44 },
+            range: { start: 14, end: 42 },
             centered: false,
             elements: [{ kind: "text" }],
           },
           {
-            range: { start: 46, end: 78 },
+            range: { start: 44, end: 69 },
             centered: false,
             elements: [{ kind: "text" }],
           },

@@ -41,11 +41,6 @@ describe("leading whitespace — allowed (range starts at column 0)", () => {
     expect(firstRange("  > centered <\n\n").start).toBe(0);
   });
 
-  test("Synopsis (=)", () => {
-    expect(firstKind("  = a synopsis\n\n")).toBe("synopsis");
-    expect(firstRange("  = a synopsis\n\n").start).toBe(0);
-  });
-
   test("Dialogue character line", () => {
     expect(firstKind("  ALICE\nHello.\n\n")).toBe("dialogue");
     expect(firstRange("  ALICE\nHello.\n\n").start).toBe(0);
@@ -96,6 +91,11 @@ describe("leading whitespace — requires column 0 (parser falls through)", () =
   test("Section (#) — col 0; indented becomes action", () => {
     expect(firstKind("# Act One\n\n")).toBe("section");
     expect(firstKind("  # Act One\n\n")).toBe("action");
+  });
+
+  test("Synopsis (=) — col 0; indented becomes action", () => {
+    expect(firstKind("= a synopsis\n\n")).toBe("synopsis");
+    expect(firstKind("  = a synopsis\n\n")).toBe("action");
   });
 
   test("PageBreak (===) — col 0; indented does not parse as page break", () => {

@@ -149,10 +149,10 @@ Hashes
  = "#"+ { return text().length }
 
 Synopsis
- = lines:SynopsisLine+ NewLine? { return mkSynopsis(range(), lines); }
+ = lines:SynopsisLine+ { return mkSynopsis(range(), lines); }
 
 SynopsisLine
- = OptionalBlanks "=" @SynopsisLineInner NewLineOrEndOfInput
+ = "=" @SynopsisLineInner NewLineOrEndOfInput
 
 SynopsisLineInner
  = elements:LineTextElement* { return mkLine(range(), mergeText(elements)); }

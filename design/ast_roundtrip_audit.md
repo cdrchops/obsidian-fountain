@@ -25,20 +25,30 @@ a `PageBreak` are predictable enough that documenting the offset in
 
 ### Line-based elements own their lines
 
-> For any element that occupies one or more whole source lines, its
-> `range` covers from the start of its first line (column 0, before
-> any leading whitespace) through the end of its trailing
-> blank-line separator (or to EOF if last). Inline elements (notes,
-> styled text, parentheticals) keep tight ranges around the syntax
-> itself.
+> For any element that introduces paragraph spacing in the rendered
+> output (Action, Dialogue, Synopsis, Lyrics, Scene heading,
+> Transition, TitlePage), its `range` covers from the start of its
+> first line (column 0, before any leading whitespace) through the
+> end of its trailing blank-line separator (or to EOF if last).
+> Inline elements (notes, styled text, parentheticals) keep tight
+> ranges around the syntax itself.
 
 The invariant: **deleting `range` from `document` removes the
 element cleanly — no orphan whitespace, no stray blank lines.**
 Trailing blank lines belong to the element that ends, not the one
 that starts, so adjacent elements never overlap or leave gaps.
 
-`SceneHeading.range` and `TitlePage.range` already do this. Other
-multi-line elements need an audit (see Open work).
+**Structural-marker carve-out:** `Section`, `Synopsis`, and
+`PageBreak` are structural markers — they don't carry paragraph
+spacing of their own. Their `range` covers only their marker
+line. Adjacent blank lines belong to the surrounding paragraph
+context (e.g., a blank line after `===` becomes an empty action
+on the next page). Sections and Synopses also render invisibly
+in Highland (action paragraphs flow as if the marker weren't
+there).
+
+`SceneHeading.range` and `TitlePage.range` already follow rule 2.
+Other multi-line elements need an audit (see Open work).
 
 ### Optional markers: `Range | null`, never alongside a boolean
 
@@ -62,7 +72,6 @@ whitespace isn't expected to belong to the range):
 |---|---|---|
 | `TitlePage` | n/a | ✅ |
 | `Scene` | ✅ | ✅ |
-| `Synopsis` | ✅ | ✅ |
 | `Dialogue` | ✅ | ✅ |
 | `Transition` (`TO:`) | ✅ | ✅ |
 | `Action` (centered) | ✅ | ✅ |
@@ -70,26 +79,29 @@ whitespace isn't expected to belong to the range):
 | `Action` (forced `!`) | n/a (spec: col 0) | ✅ |
 | `Transition` (forced `>`) | n/a (spec: col 0) | ✅ |
 | `Lyrics` (`~`) | n/a (spec: col 0) | ❌ |
-| `Section` (`#`) | n/a (spec: col 0) | ❌ |
-| `PageBreak` (`===`) | n/a (spec: col 0) | ❌ |
-| `Synopsis` second-look | ⚠️ may be too permissive | — |
+| `Section` (`#`) | n/a (spec: col 0) | n/a (structural marker) |
+| `Synopsis` (`=`) | n/a (spec: col 0) | n/a (structural marker) |
+| `PageBreak` (`===`) | n/a (spec: col 0) | n/a (structural marker) |
 
 Concrete fixes worth opening:
 
-- [x] **Tightened `Section` and `PageBreak` to reject leading
-  whitespace.** Dropped `OptionalBlanks` from both rules (and from
-  the `PageBreakPattern` lookahead used by Action/Dialogue
-  terminators). Pinned by `__tests__/leading_whitespace.test.ts`.
-- [ ] **`Lyrics`, `Section`, `PageBreak` should consume the trailing
-  blank-line separator.** Currently the `\n\n` after the element is
-  donated to the next element (often an Action that starts with a
-  leading `\n`). Easy parser change; check that consumers don't
-  depend on the existing shape.
-- [ ] **Re-check `Synopsis` against the spec.** Discovered while
-  tightening `PageBreak`: indented `  ===` now falls through to
-  `Synopsis` (`  =text` matches `OptionalBlanks "=" text`). If the
-  spec also pins `=` to column 0, drop `OptionalBlanks` from
-  `SynopsisLine` too.
+- [x] **Tightened `Section`, `PageBreak`, and `Synopsis` to reject
+  leading whitespace and (for the structural markers) not consume
+  the trailing blank line.** Dropped `OptionalBlanks` from
+  `Section`, `PageBreak`, `PageBreakPattern`, and `SynopsisLine`;
+  dropped the trailing `NewLine?` from `Synopsis`. Pinned by
+  `__tests__/leading_whitespace.test.ts`.
+- [ ] **`Lyrics` should consume the trailing blank-line separator.**
+  Currently the `\n\n` after a lyrics block is donated to the next
+  element. Lyrics are paragraph-block content (sung lines), not a
+  structural marker, so rule 2 applies.
+- [ ] **Sections and Synopses appearing mid-action are silently
+  swallowed.** `Foo\n# As section\nBar\n` parses as a single Action
+  covering all three lines — the marker line is consumed by the
+  `Line` fallback in `ActionLine`. Highland recognizes the marker
+  regardless. Likely fix: add a `!SectionPattern !SynopsisPattern`
+  guard to `ActionLine`'s fallback rule (and similarly to
+  `DialogueLine`).
 
 Other open items:
 
@@ -168,14 +180,24 @@ field; ❌ not recoverable from AST alone.
 ### Section
 
 - `Section.range` ✅ — `#` is column-0 by spec (parser enforces).
-  **Trailing blank-line separator is NOT included** (rule-2
-  violation; same as `PageBreak` / `Lyrics`).
+  Range covers the heading line only; **no trailing blank line by
+  design** — sections are invisible structural markers (Highland
+  renders them as nothing), so they don't carry paragraph spacing.
+  See the structural-marker carve-out in rule 2.
+- Known bug: a section appearing mid-action (no preceding blank
+  line) is silently swallowed by Action — see Open work.
 - `Section.depth: number` — count of `#`s. The `#` characters live at
   `range.start..range.start + depth` (fixed-offset carve-out).
 
 ### Synopsis
 
-- `Synopsis.range` ✅
+- `Synopsis.range` ✅ — `=` is column-0 by spec (parser enforces).
+  Range covers the synopsis line(s) only; **no trailing blank line
+  by design** — Highland renders synopses as invisible structural
+  markers, same as Section. See the structural-marker carve-out in
+  rule 2.
+- Known bug: a synopsis appearing mid-action (no preceding blank
+  line) is silently swallowed by Action — see Open work.
 - `Synopsis.lines: Line[]` ✅ — each line range excludes the leading
   `=` and trailing `\n`.
 - `=` markers ⚠️ — inside `range`.
@@ -204,8 +226,10 @@ field; ❌ not recoverable from AST alone.
 ### Page break
 
 - `PageBreak.range` ✅ — `===` is column-0 by spec (parser enforces).
-  **Trailing blank-line separator is NOT included** (rule-2
-  violation; same as `Section` / `Lyrics`).
+  Range covers the marker line only; **no trailing blank line by
+  design** — page breaks are structural markers (a blank line after
+  `===` becomes an empty action on the next page). See the
+  structural-marker carve-out in rule 2.
 - `===` lives inside `range` (fixed-offset carve-out).
 
 ### Styled text (bold/italics/underline)
