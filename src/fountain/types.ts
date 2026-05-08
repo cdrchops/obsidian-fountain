@@ -198,6 +198,9 @@ export type Dialogue = {
   /// Range of the `^` dual-dialogue marker if present in source. Always set
   /// by the parser whenever the source had a caret, regardless of whether
   /// it formed a valid pair. The range covers exactly the `^` character.
+  /// Splitting the source-truth (`caretRange`) from the rendering-truth
+  /// (`dual`) avoids a tri-state and lets the editor highlight orphan
+  /// carets without losing the position of the `^`.
   caretRange: Range | null;
   /// Whether this dialogue renders as part of a side-by-side pair. Set by
   /// `applyDualPairing` in the FountainScript constructor (not the parser).

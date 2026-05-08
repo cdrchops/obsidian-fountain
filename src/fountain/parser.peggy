@@ -191,6 +191,13 @@ Dialogue
    content:DialogueContent
  { return mkDialogue(range(), character, exts, content, caret); }
 
+// The Fountain spec reads strictly as "the caret must be the last
+// character on the line" — i.e., no trailing whitespace. We match
+// Highland's lenient interpretation and accept whitespace before and
+// after the `^`: writers paste invisible spaces in by accident, and
+// flipping the semantics from dual-dialogue to "regular character
+// whose name ends in `^   `" on the basis of a trailing space would
+// be hostile UX. `BRICK ^`, `BRICK^`, `BRICK (V.O.)^   ` all parse.
 DualMarker
  = [ \t]* caret:Caret [ \t]* { return caret; }
 

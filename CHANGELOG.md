@@ -18,7 +18,6 @@
 - **Dual dialogue (`^` marker)**: Two characters speaking simultaneously now render side-by-side in the readonly view and PDF. Mark the second of two consecutive dialogues with a trailing `^` (e.g. `STEEL ^`) and the pair gets two columns. The first dialogue carries no marker, matching the Fountain spec.
 - **Caret feedback in the editor**: Valid `^` markers (the caret formed a pair) render dimmed; orphan or unpaired carets render in the theme's error color, so you can see at a glance when a `^` had no effect (e.g. predecessor isn't a dialogue, or a third caret in a row that can't pair).
 - **PDF column wrapping**: Each column wraps at the narrower per-column width (~25 chars), not the full single-column width. v1 doesn't split a dual pair across pages — an over-tall pair ejects to the next page.
-- Design notes: `design/dual_dialogue_implementation.md`.
 
 ## [0.32.1] - Boneyard at start of paragraph
 
