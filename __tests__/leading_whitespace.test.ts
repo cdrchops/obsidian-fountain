@@ -1,0 +1,119 @@
+// Pins the leading-whitespace behavior of every line-based element.
+// Audited and documented in design/ast_roundtrip_audit.md (rule 2).
+//
+// These tests exist because the same coverage was previously implicit
+// across dozens of unrelated tests — refactors could drop it without
+// signaling. Centralizing here makes the contract explicit.
+//
+// Key distinction:
+// - "Allows leading whitespace" → element parses the same with or
+//   without leading ws, and the ws is part of the element's range.
+// - "Requires column 0" → the marker (`!`, `>`, `~`) must be at
+//   column 0 per the Fountain spec; leading whitespace causes the
+//   parser to fall through to a different element type (typically
+//   plain Action).
+import { describe, expect, test } from "@jest/globals";
+import { parse } from "../src/fountain/parser";
+
+function firstKind(src: string): string {
+  return parse(src, {}).script[0]?.kind ?? "<empty>";
+}
+
+function firstRange(src: string): { start: number; end: number } {
+  const el = parse(src, {}).script[0];
+  if (!el) throw new Error("no first element");
+  return el.range;
+}
+
+describe("leading whitespace — allowed (range starts at column 0)", () => {
+  test("Scene heading", () => {
+    expect(firstKind("  INT. HOUSE - DAY\n\n")).toBe("scene");
+    expect(firstRange("  INT. HOUSE - DAY\n\n").start).toBe(0);
+  });
+
+  test("Unforced Transition (… TO:)", () => {
+    expect(firstKind("  FADE TO:\n\n")).toBe("transition");
+    expect(firstRange("  FADE TO:\n\n").start).toBe(0);
+  });
+
+  test("Centered Action (> … <)", () => {
+    expect(firstKind("  > centered <\n\n")).toBe("action");
+    expect(firstRange("  > centered <\n\n").start).toBe(0);
+  });
+
+  test("Synopsis (=)", () => {
+    expect(firstKind("  = a synopsis\n\n")).toBe("synopsis");
+    expect(firstRange("  = a synopsis\n\n").start).toBe(0);
+  });
+
+  test("Dialogue character line", () => {
+    expect(firstKind("  ALICE\nHello.\n\n")).toBe("dialogue");
+    expect(firstRange("  ALICE\nHello.\n\n").start).toBe(0);
+  });
+
+  test("Plain action — leading ws is folded into the line text", () => {
+    // Plain action has no marker; leading whitespace is part of the
+    // action text content, not a separator.
+    expect(firstKind("  some action\n\n")).toBe("action");
+    expect(firstRange("  some action\n\n").start).toBe(0);
+  });
+});
+
+describe("leading whitespace — requires column 0 (parser falls through)", () => {
+  // For each forced marker, we assert that adding leading whitespace
+  // does NOT produce that element type — the parser must reject the
+  // indented form and fall through to plain Action. This pins the
+  // spec-compliant behavior so a refactor can't silently make the
+  // parser too permissive.
+
+  test("Forced Action (!) — col 0 is the marker; indented becomes plain action", () => {
+    expect(firstKind("!forced\n\n")).toBe("action");
+    // With leading ws, the `!` is no longer a forced marker — it's
+    // just text in a plain action line. The element is still kind
+    // "action" but the `!` does not denote forcing.
+    const indented = parse("  !not forced\n\n", {});
+    const el = indented.script[0];
+    expect(el?.kind).toBe("action");
+    // If a future refactor introduced a forced range/flag, indenting
+    // past column 0 must not set it.
+  });
+
+  test("Forced Transition (>) — col 0; indented becomes action", () => {
+    // Use "JUMP CUT" (no `TO:`) so the indented form can't accidentally
+    // match the unforced `… TO:` transition rule. With `> CUT TO:`
+    // indented, the parser falls through to unforced transition because
+    // "TO:" + all-uppercase still matches; that's a separate quirk of
+    // the unforced rule, not a leading-whitespace property of `>`.
+    expect(firstKind("> JUMP CUT\n\n")).toBe("transition");
+    expect(firstKind("  > JUMP CUT\n\n")).toBe("action");
+  });
+
+  test("Lyrics (~) — col 0; indented becomes action", () => {
+    expect(firstKind("~ a lyric\n\n")).toBe("lyrics");
+    expect(firstKind("  ~ a lyric\n\n")).toBe("action");
+  });
+});
+
+describe("leading whitespace — TODO: parser is currently too permissive", () => {
+  // Per the Fountain spec (and confirmed in Highland), Section (#)
+  // and PageBreak (===) must start at column 0. The parser currently
+  // consumes OptionalBlanks before both markers and accepts indented
+  // forms. These tests pin the *current* (over-permissive) behavior
+  // — when the parser is tightened to match spec, flip the
+  // assertions to expect "action" instead.
+  //
+  // See design/ast_roundtrip_audit.md → "Tighten Section and
+  // PageBreak to reject leading whitespace".
+
+  test("Section (#) — currently accepts leading ws (spec says col 0 only)", () => {
+    expect(firstKind("# Act One\n\n")).toBe("section");
+    // TODO: should be "action" once parser is tightened to spec.
+    expect(firstKind("  # Act One\n\n")).toBe("section");
+  });
+
+  test("PageBreak (===) — currently accepts leading ws (spec says col 0 only)", () => {
+    expect(firstKind("===\n\n")).toBe("page-break");
+    // TODO: should be "action" once parser is tightened to spec.
+    expect(firstKind("  ===\n\n")).toBe("page-break");
+  });
+});
