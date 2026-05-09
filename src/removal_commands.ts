@@ -237,11 +237,7 @@ export class RemoveStructureModal extends RemovalModal {
 
       // Initialize nested content
       for (const item of section.content) {
-        if (item.kind === "section") {
-          this.initializeCheckboxes([item]);
-        } else if (item.kind === "scene") {
-          this.structureCheckboxes.set(item, false);
-        }
+        this.structureCheckboxes.set(item, false);
       }
     }
   }
@@ -249,16 +245,7 @@ export class RemoveStructureModal extends RemovalModal {
   private getAllDescendantsOf(
     parent: StructureSection,
   ): Array<StructureSection | StructureScene> {
-    const descendants: Array<StructureSection | StructureScene> = [];
-    for (const item of parent.content) {
-      if (item.kind === "section") {
-        descendants.push(item);
-        descendants.push(...this.getAllDescendantsOf(item));
-      } else if (item.kind === "scene") {
-        descendants.push(item);
-      }
-    }
-    return descendants;
+    return [...parent.content];
   }
 
   private handleCheck(item: StructureSection | StructureScene): void {
@@ -394,24 +381,7 @@ export class RemoveStructureModal extends RemovalModal {
     modalContentEl: HTMLElement,
   ): void {
     for (const item of section.content) {
-      if (item.kind === "section") {
-        // Render nested section
-        if (item.section) {
-          this.renderItem(item, container, ancestors, modalContentEl);
-          // Recursively render its content
-          this.renderSectionContent(
-            item,
-            container,
-            [...ancestors, item],
-            modalContentEl,
-          );
-        } else {
-          // Section without header - just render its content
-          this.renderSectionContent(item, container, ancestors, modalContentEl);
-        }
-      } else if (item.kind === "scene") {
-        this.renderItem(item, container, ancestors, modalContentEl);
-      }
+      this.renderItem(item, container, ancestors, modalContentEl);
     }
   }
 

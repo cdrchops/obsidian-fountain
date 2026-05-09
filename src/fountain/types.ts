@@ -269,7 +269,11 @@ export interface ScriptStructure {
 // ============================================================================
 
 export class StructureSection {
-  readonly content: (StructureSection | StructureScene)[];
+  /** Always `StructureScene[]` — `script.structure()` produces flat
+   *  sibling sections (depth-≤-3 headings push a new top-level section,
+   *  depth-≥-4 headings live inside `scene.content`), so a section's
+   *  content never contains another section. */
+  readonly content: StructureScene[];
   readonly kind: "section";
 
   constructor(

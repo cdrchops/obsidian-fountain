@@ -289,52 +289,43 @@ class TocSection extends SidebarSection {
       }
       this.renderSynopsis(s, script, section.synopsis);
       for (const el of section.content) {
-        switch (el.kind) {
-          case "section":
-            this.renderTocSection(s, script, el);
-            break;
-          case "scene":
-            {
-              if (el.scene) {
-                const el_scene = el.scene;
-                const d = s.createDiv({
-                  cls: "scene-heading",
-                  text: el_scene.heading,
-                });
-                d.addEventListener("click", (evt: Event) => {
-                  this.callbacks.scrollToRange(el_scene.range);
-                });
-              }
-              if (el.synopsis) {
-                this.renderSynopsis(s, script, el.synopsis);
-              } else {
-                const preview = getScenePreview(script, el);
-                if (preview) {
-                  const d = s.createDiv({
-                    cls: "preview",
-                    text: preview,
-                  });
-                  if (!this.showSynopsis) {
-                    d.hide();
-                  }
-                }
-              }
-              const todos = extractNotes(el.content).filter(
-                (n) => n.noteKind === "todo",
-              );
-              for (const note of todos) {
-                s.createDiv({ cls: "todo" }, (div) => {
-                  styledTextToHtml(script, div, [note], {}, false);
-                  div.addEventListener("click", () =>
-                    this.callbacks.scrollToRange(note.range),
-                  );
-                  if (!this.showTodos) {
-                    div.hide();
-                  }
-                });
-              }
+        if (el.scene) {
+          const el_scene = el.scene;
+          const d = s.createDiv({
+            cls: "scene-heading",
+            text: el_scene.heading,
+          });
+          d.addEventListener("click", (evt: Event) => {
+            this.callbacks.scrollToRange(el_scene.range);
+          });
+        }
+        if (el.synopsis) {
+          this.renderSynopsis(s, script, el.synopsis);
+        } else {
+          const preview = getScenePreview(script, el);
+          if (preview) {
+            const d = s.createDiv({
+              cls: "preview",
+              text: preview,
+            });
+            if (!this.showSynopsis) {
+              d.hide();
             }
-            break;
+          }
+        }
+        const todos = extractNotes(el.content).filter(
+          (n) => n.noteKind === "todo",
+        );
+        for (const note of todos) {
+          s.createDiv({ cls: "todo" }, (div) => {
+            styledTextToHtml(script, div, [note], {}, false);
+            div.addEventListener("click", () =>
+              this.callbacks.scrollToRange(note.range),
+            );
+            if (!this.showTodos) {
+              div.hide();
+            }
+          });
         }
       }
     });

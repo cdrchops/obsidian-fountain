@@ -5,18 +5,15 @@ function flattenScenes(
   sections: StructureSection[],
 ): StructureScene[] {
   const result: StructureScene[] = [];
-  const visit = (section: StructureSection): void => {
+  for (const section of sections) {
     for (const child of section.content) {
-      if (child.kind === "scene") {
-        // Only keep "real" scenes — ones with an actual heading. The
-        // structure builder also produces synthetic scene buckets for
-        // pre-heading action lines; those carry no heading and aren't
-        // navigation targets.
-        if (child.scene) result.push(child);
-      } else visit(child);
+      // Only keep "real" scenes — ones with an actual heading. The
+      // structure builder also produces synthetic scene buckets for
+      // pre-heading action lines; those carry no heading and aren't
+      // navigation targets.
+      if (child.scene) result.push(child);
     }
-  };
-  for (const s of sections) visit(s);
+  }
   return result;
 }
 

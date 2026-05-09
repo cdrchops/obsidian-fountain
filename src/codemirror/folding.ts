@@ -43,7 +43,7 @@ function findSceneInSection(section: StructureSection, position: number, documen
 	}
 	// We need to find out if position is on the scene heading (excluding the two newline characters)
 	// and there is actually content
-	if (item.kind === "scene" && item.scene && position >= item.scene.range.start
+	if (item.scene && position >= item.scene.range.start
 		&& position < item.scene.range.end - 1 && item.content.length > 0) {
 			const foldStart = item.scene.range.end - 2;
         // Check if the last character is a newline before subtracting 1
@@ -59,9 +59,6 @@ function findSceneInSection(section: StructureSection, position: number, documen
         return { from: foldStart, to: foldEnd };
         }
         return null;
-    } else if (item.kind === "section") {
-		// Recursively search nested sections
-      return findSceneInSection(item, position, document);
     }
     return null;
 }
@@ -81,14 +78,12 @@ export function buildFoldRanges(structure: ScriptStructure): {from: number, to: 
 function collectFoldRanges(sections: StructureSection[], ranges: {from: number, to: number}[]): void {
   for (const section of sections) {
     for (const item of section.content) {
-      if (item.kind === "scene" && item.scene && item.content.length > 0) {
+      if (item.scene && item.content.length > 0) {
         const foldStart = item.scene.range.end;
         const foldEnd = item.range.end;
         if (foldEnd > foldStart) {
           ranges.push({ from: foldStart, to: foldEnd });
         }
-      } else if (item.kind === "section") {
-        collectFoldRanges([item], ranges);
       }
     }
   }

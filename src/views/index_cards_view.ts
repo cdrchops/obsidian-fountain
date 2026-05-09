@@ -215,10 +215,6 @@ function installDragAndDropHandlers(
   });
 }
 
-function assertNever(x: never): never {
-  throw new Error(`Unexpected object: ${x}`);
-}
-
 /** Replace the heading <h3> with an <input>; commit on Enter or blur,
  *  cancel on Esc. The committed flag avoids the re-entry that would
  *  otherwise occur when commit's `reRender` detaches the input and fires
@@ -617,12 +613,12 @@ function renderSection(
   section: StructureSection,
   callbacks: ReadonlyViewCallbacks,
 ): void {
-  // Phantom synthetic section: no heading, no real scenes/subsections —
-  // a parser bucket left over from blank lines or stray actions. Render
-  // nothing so it doesn't surface a confusing second dashed `+` card
-  // alongside a sibling section with its own.
+  // Phantom synthetic section: no heading, no real scenes — a parser
+  // bucket left over from blank lines or stray actions. Render nothing
+  // so it doesn't surface a confusing second dashed `+` card alongside
+  // a sibling section with its own.
   const sectionHasRenderableContent = section.content.some(
-    (c) => (c.kind === "scene" && !!c.scene) || c.kind === "section",
+    (c) => !!c.scene,
   );
   if (!section.section && !sectionHasRenderableContent) return;
 
@@ -670,28 +666,14 @@ function renderSection(
     let lastSceneEnd: number | null = null;
     let renderedAnyContent = false;
     for (const el of section.content) {
-      switch (el.kind) {
-        case "scene": {
-          // Synthetic scenes (no `.scene` heading — usually a stray blank
-          // action line at the start/end of a section) render nothing,
-          // so don't count them as renderable content.
-          const slot = renderIndexCard(sectionDiv, path, script, el, callbacks);
-          if (slot) {
-            renderedAnyContent = true;
-            lastSceneSlot = slot;
-            lastSceneEnd = el.range.end;
-          }
-          break;
-        }
-        case "section":
-          renderedAnyContent = true;
-          renderSection(sectionDiv, path, script, el, callbacks);
-          break;
-        default:
-          {
-            assertNever(el);
-          }
-          break;
+      // Synthetic scenes (no `.scene` heading — usually a stray blank
+      // action line at the start/end of a section) render nothing,
+      // so don't count them as renderable content.
+      const slot = renderIndexCard(sectionDiv, path, script, el, callbacks);
+      if (slot) {
+        renderedAnyContent = true;
+        lastSceneSlot = slot;
+        lastSceneEnd = el.range.end;
       }
     }
     // Right-edge gutter on the last *direct* scene of this section. The
@@ -741,10 +723,7 @@ export function renderIndexCards(
   // scene with a heading, or a nested section).
   const hasVisibleContent = structure.sections.some(
     (s) =>
-      !!s.section ||
-      s.content.some(
-        (c) => (c.kind === "scene" && !!c.scene) || c.kind === "section",
-      ),
+      !!s.section || s.content.some((c) => !!c.scene),
   );
 
   // Top-of-doc bar: shown when the doc starts with a section heading (so
