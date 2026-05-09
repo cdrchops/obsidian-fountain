@@ -298,18 +298,39 @@ export class StructureScene {
   readonly kind: "scene";
   readonly content: Exclude<FountainElement, SceneHeading>[];
 
-  constructor(
-    public scene?: SceneHeading,
-    public synopsis?: Synopsis,
-  ) {
+  constructor(public scene?: SceneHeading) {
     this.content = [];
     this.kind = "scene";
+  }
+
+  /** First synopsis in `content` that qualifies as *the* scene synopsis:
+   *  reached by skipping blank-line actions only. Mirrors how Highland
+   *  treats the synopsis directly under a scene heading. Returns
+   *  undefined when the scene has no qualifying synopsis (e.g. action
+   *  appeared first, or the scene has no synopsis at all). */
+  get synopsis(): Synopsis | undefined {
+    for (const el of this.content) {
+      if (el.kind === "synopsis") return el;
+      if (el.kind === "action" && el.lines.every((l) => !l.elements.length)) {
+        continue;
+      }
+      return undefined;
+    }
+    return undefined;
+  }
+
+  /** `content` with the qualifying synopsis (if any) elided — the
+   *  "everything except the synopsis" view that consumers want when
+   *  they iterate the scene's body for action / dialogue / todos. */
+  get body(): Exclude<FountainElement, SceneHeading>[] {
+    const syn = this.synopsis;
+    if (!syn) return this.content;
+    return this.content.filter((el) => el !== syn);
   }
 
   get range(): Range {
     return computeRange(
       this.scene?.range,
-      this.synopsis?.range,
       this.content[0]?.range,
       this.content[this.content.length - 1]?.range,
     );

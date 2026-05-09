@@ -20,16 +20,17 @@ describe("structure(): scene synopsis attachment", () => {
     expect(scene.synopsis?.lines[0]).toBeDefined();
   });
 
-  test("the attached synopsis is removed from scene.content", () => {
+  test("the attached synopsis stays in scene.content but is elided from scene.body", () => {
     const script = parse(
       "INT. SCENE - DAY\n\n= Scene synopsis.\n\nAction.\n\n",
       {},
     );
     const scene = script.structure().sections[0].content[0];
-    const synopsesInContent = scene.content.filter(
-      (c) => c.kind === "synopsis",
-    );
-    expect(synopsesInContent.length).toBe(0);
+    // .content preserves source order — the synopsis is still there.
+    expect(scene.content.some((c) => c.kind === "synopsis")).toBe(true);
+    // .body is what consumers iterate when they want everything except
+    // the synopsis (action, dialogue, todos).
+    expect(scene.body.some((c) => c.kind === "synopsis")).toBe(false);
   });
 
   test("synopsis after non-blank action stays in scene.content (not attached)", () => {
@@ -66,7 +67,7 @@ describe("structure(): scene synopsis attachment", () => {
     expect(scene.synopsis).toBeDefined();
   });
 
-  test("when a synopsis is attached, a later synopsis stays in scene.content", () => {
+  test("when a synopsis is attached, a later synopsis stays in scene.body", () => {
     // A blank line between two `= …` blocks splits them into two
     // separate Synopsis elements (consecutive `=` lines parse as one).
     const script = parse(
@@ -75,10 +76,10 @@ describe("structure(): scene synopsis attachment", () => {
     );
     const scene = script.structure().sections[0].content[0];
     expect(scene.synopsis).toBeDefined();
-    const synopsesInContent = scene.content.filter(
-      (c) => c.kind === "synopsis",
-    );
-    expect(synopsesInContent.length).toBe(1);
+    // .body is content with the *first* (qualifying) synopsis elided —
+    // the second synopsis remains.
+    const synopsesInBody = scene.body.filter((c) => c.kind === "synopsis");
+    expect(synopsesInBody.length).toBe(1);
   });
 
   test("consecutive `=` lines parse as one multi-line synopsis and attach as a unit", () => {

@@ -313,7 +313,9 @@ class TocSection extends SidebarSection {
             }
           }
         }
-        const todos = extractNotes(el.content).filter(
+        // Use `.body` not `.content` so the qualifying synopsis (already
+        // rendered above) doesn't have its todos surface again here.
+        const todos = extractNotes(el.body).filter(
           (n) => n.noteKind === "todo",
         );
         for (const note of todos) {

@@ -100,9 +100,7 @@ export class FountainScript {
     let currentScene = new StructureScene();
 
     const isSceneEmpty = () =>
-      !currentScene.scene &&
-      !currentScene.synopsis &&
-      !currentScene.content.length;
+      !currentScene.scene && !currentScene.content.length;
     const isSectionEmpty = () =>
       isSceneEmpty() &&
       !currentSection.section &&
@@ -157,25 +155,17 @@ export class FountainScript {
           break;
 
         case "synopsis":
-          // A synopsis attached to a heading lives on `.synopsis`, not
-          // in `.content`. Two cases qualify, and both require that no
-          // other content has appeared between the heading and the
-          // synopsis (only blank-line actions): a synopsis right after
-          // a scene heading attaches to the scene; a synopsis right
-          // after a section heading (with no scenes yet) attaches to
-          // the section.
+          // Section synopsis: a `=` line right after a section heading
+          // (no scenes yet, only blank-line actions between) attaches
+          // to `currentSection.synopsis`. The matching scene-synopsis
+          // case is computed on demand by `StructureScene.synopsis` —
+          // we just push to content and let the getter find it.
           // TODO: Deal with boneyards.
           if (
-            !currentScene.synopsis &&
-            currentScene.scene &&
-            sceneHasOnlyBlankLines()
-          ) {
-            currentScene.synopsis = fe;
-          } else if (
-            !currentScene.synopsis &&
             !currentScene.scene &&
             sceneHasOnlyBlankLines() &&
             currentSection.section &&
+            !currentSection.synopsis &&
             !currentSection.content.length
           ) {
             currentSection.synopsis = fe;

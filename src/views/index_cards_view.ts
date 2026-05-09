@@ -458,7 +458,10 @@ function renderIndexCard(
 ): HTMLElement | null {
   if (!scene.scene) return null;
   const heading = scene.scene;
-  const content = scene.content;
+  // Use `body` not `content` for note extraction — the qualifying
+  // synopsis is already rendered separately via renderSynopsis, so its
+  // todos shouldn't show up a second time in the card's todo list.
+  const body = scene.body;
 
   let slotRef: HTMLElement | null = null;
   div.createDiv({ cls: "card-slot" }, (slot) => {
@@ -533,7 +536,7 @@ function renderIndexCard(
           heading.range.end,
           scene,
         );
-        const todos = extractNotes(content).filter(
+        const todos = extractNotes(body).filter(
           (n) => n.noteKind === "todo",
         );
         for (const note of todos) {
