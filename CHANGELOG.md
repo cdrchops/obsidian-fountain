@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.34.0] - Section Editing in Index Cards
+
+Sections are now first-class citizens in the index card view, same as scenes — you can rename them, change their depth, delete them, and insert new ones at any position without leaving the card view.
+
+- **Section pencil rename**: The same pencil that renames scene headings now also renames section headings. The input shows the full `## Title` form so you can change depth (`# Top` → `### Top`) by editing the leading `#`s, and clearing the input deletes the section heading entirely (children flow up to the parent on reparse). The title portion is pre-selected so typing replaces just the title without disturbing the `#…` prefix.
+- **Stacked `+` / `#` gutter buttons**: The hover gutter on each scene card now carries two buttons — `+` for a new scene, `#` for a new section. Both auto-focus the rename input on the freshly inserted card / heading. The `#` always inserts a depth-1 section; promote later via the rename input. A right-edge variant appears on the last scene of each section so you can append a scene or section at the boundary just before the next sibling section.
+- **Edge `+ section` bars**: A horizontal `+ section` bar appears above the first section (when the doc starts with one) and at the bottom of the doc, so you can prepend or append a section without finding a specific card to anchor to. Bars between every pair of sections were prototyped and judged redundant — the vertical `#` button on the previous section's last scene already covers that position.
+- **Empty-doc dashed `+` card**: A fresh `.fountain` file now opens to a single dashed `+` card flanked by both `+ section` bars, so section-first and scene-first starts both have an obvious aim point.
+- **Pre-select on scene rename**: The scene heading input now pre-selects its placeholder text, so typing immediately replaces `.SCENE HEADING` instead of appending to it.
+- **Fix**: Inserting a scene from the dashed `+` card on a freshly-renamed section silently bailed because the parser left a synthetic empty section bucket in front of the real one — that bucket surfaced its own dashed `+` card with a NaN range, and the auto-focus query found nothing. The cards renderer now skips sections with no heading and no renderable content.
+- **Internal**: New `test/e2e/specs/index_card_section_editing.e2e.ts` covers all the section-editing paths (insert, auto-focus, depth change, delete-via-empty-input) and the synth-section regression. Design rationale lives in `design/section_editing_in_index_cards.md` (slimmed: prototype removed, mechanics moved into code/tests).
+
 ## [0.33.2] - Structural Marker Spec Compliance
 
 - **Fix**: `# Section` headings, `= synopsis` lines, and `===` page breaks now require their marker at column 0, matching the Fountain spec (and Highland). Previously the parser accepted leading whitespace before all three. An indented `  # heading` / `  = synopsis` is now an action line; an indented `  ===` no longer creates a page break.
