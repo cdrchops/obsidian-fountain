@@ -42,9 +42,15 @@ import {
 
 export const VIEW_TYPE_FOUNTAIN = "fountain";
 
-/** How many leading newlines must precede an inserted line at `pos` so it
- *  starts at column 0 with a blank-line separator from any preceding
- *  paragraph content. */
+/** How many leading newlines must precede an inserted line at `pos` so
+ *  it starts at column 0 with a blank-line separator from any preceding
+ *  paragraph content. Used by both scene and section insertion: scene
+ *  headings *require* a blank line before when following Action (the
+ *  Scene rule's `BlankLineOrEndOfInput` is the after-blank, but without
+ *  a preceding blank line `INT. FOO - DAY` is absorbed as Action text);
+ *  sections don't strictly require it (Action's terminator matches
+ *  `&StructuralMarkerStart`), but padding is harmless and lets both
+ *  insertion paths share the same helper. */
 function newlinesNeededBefore(doc: string, pos: number): string {
   if (pos === 0) return "";
   const before = doc.slice(Math.max(0, pos - 2), pos);
@@ -140,13 +146,24 @@ export class FountainView extends TextFileView {
 
   /** Insert a new `.SCENE HEADING` placeholder at `pos`, then auto-focus
    *  the rename input on the freshly created card so the user can type
-   *  immediately. Used by the gutter and the dashed `+` card. */
+   *  immediately. Used by the gutter and the dashed `+` card. The
+   *  `newlinesNeededBefore` padding is load-bearing: a scene heading
+   *  inserted right after Action text (no blank line between) is
+   *  absorbed as Action and never parses as a heading. */
   private insertSceneAt(pos: number): void {
+    const doc = this.cachedScript.document;
+    const prefix = newlinesNeededBefore(doc, pos);
+    const expectedStart = pos + prefix.length;
     if (this.state instanceof ReadonlyViewState) {
-      this.state.schedulePostRender(() => this.focusNewCardHeading(pos));
+      this.state.schedulePostRender(() =>
+        this.focusNewCardHeading(expectedStart),
+      );
     }
     this.applyEditsToFile([
-      { range: { start: pos, end: pos }, replacement: ".SCENE HEADING\n\n" },
+      {
+        range: { start: pos, end: pos },
+        replacement: `${prefix}.SCENE HEADING\n\n`,
+      },
     ]);
   }
 
@@ -160,9 +177,9 @@ export class FountainView extends TextFileView {
   }
 
   /** Insert a fresh `# New section` heading at `pos`, then auto-focus the
-   *  rename input. Pads the inserted text with leading newlines if `pos`
-   *  isn't already at a clean line boundary so the parser cleanly produces
-   *  a section element. */
+   *  rename input. The newline padding isn't strictly needed for sections
+   *  (Action terminates on `&StructuralMarkerStart`), but we run through
+   *  the same helper as `insertSceneAt` for symmetry. */
   private insertSectionAt(pos: number): void {
     const doc = this.cachedScript.document;
     const prefix = newlinesNeededBefore(doc, pos);
