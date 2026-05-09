@@ -269,10 +269,18 @@ export interface ScriptStructure {
 // ============================================================================
 
 export class StructureSection {
-  /** Always `StructureScene[]` — `script.structure()` produces flat
-   *  sibling sections (depth-≤-3 headings push a new top-level section,
-   *  depth-≥-4 headings live inside `scene.content`), so a section's
-   *  content never contains another section. */
+  /** Sections never nest other sections in this model. Section *depth*
+   *  in Fountain is the count of `#`s the writer typed — and writers
+   *  don't always type a well-formed hierarchy (a doc that opens with
+   *  `### Act 1` has no surrounding `##`/`#` to nest under, two `##`
+   *  in a row aren't necessarily siblings of any one parent, etc.).
+   *  Since depth doesn't imply structure, we can't build a tree from
+   *  it without imposing a shape the source doesn't say is there.
+   *
+   *  So every depth-≤-3 heading is a top-level sibling in
+   *  `ScriptStructure.sections`; the visual hierarchy is purely the
+   *  `<h{depth}>` rendering. Depth-≥-4 headings flow into
+   *  `scene.content` as scene-internal subsections by convention. */
   readonly content: StructureScene[];
   readonly kind: "section";
 
