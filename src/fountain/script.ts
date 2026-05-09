@@ -93,100 +93,94 @@ export class FountainScript {
       instead.
   */
   structure(): ScriptStructure {
-    const res: StructureSection[] = [];
-    let currentSection: StructureSection = new StructureSection();
-    let currentScene: StructureScene = new StructureScene();
-    let snippetsStartIndex: number | null = null;
+    const [mainElements, snippetElements] = this.splitOffSnippetsSection();
 
-    const isCurrentSceneEmpty = () =>
-      !currentScene.content.length &&
+    const sections: StructureSection[] = [];
+    let currentSection = new StructureSection();
+    let currentScene = new StructureScene();
+
+    const isSceneEmpty = () =>
       !currentScene.scene &&
-      !currentScene.synopsis;
-    const isCurrentSectionEmpty = () =>
-      isCurrentSceneEmpty() &&
-      !currentSection.content &&
+      !currentScene.synopsis &&
+      !currentScene.content.length;
+    const isSectionEmpty = () =>
+      isSceneEmpty() &&
       !currentSection.section &&
-      !currentSection.synopsis;
-    const currentSceneHasOnlyBlankLines = () =>
+      !currentSection.synopsis &&
+      !currentSection.content.length;
+    const sceneHasOnlyBlankLines = () =>
       currentScene.content.every(
         (fe) =>
           fe.kind === "action" && fe.lines.every((l) => !l.elements.length),
       );
 
-    // First pass: find the index where snippets start
-    for (let i = 0; i < this.script.length; i++) {
-      const fe = this.script[i];
-      if (fe.kind === "section" && fe.depth <= 3) {
-        // Check if this is a "Snippets" section
-        const sectionText = this.sliceDocument(fe.range).trim();
-        if (sectionText.toLowerCase().includes("snippets")) {
-          snippetsStartIndex = i;
-          break;
-        }
+    /** Push the in-progress scene onto its section and start fresh. */
+    const flushScene = () => {
+      if (!isSceneEmpty()) {
+        currentSection.content.push(currentScene);
+        currentScene = new StructureScene();
       }
-    }
+    };
+    /** Close the in-progress section, which closes the in-progress scene
+     *  first. Called both when a new section heading arrives and at the
+     *  end of the input. */
+    const flushSection = () => {
+      flushScene();
+      if (!isSectionEmpty()) {
+        sections.push(currentSection);
+        currentSection = new StructureSection();
+      }
+    };
 
-    // Process main script elements up to snippets
-    const mainScriptElements =
-      snippetsStartIndex !== null
-        ? this.script.slice(0, snippetsStartIndex)
-        : this.script;
-
-    for (const fe of mainScriptElements) {
+    for (const fe of mainElements) {
       switch (fe.kind) {
         case "section":
-          {
-            if (fe.depth <= 3) {
-              if (isCurrentSectionEmpty()) {
-                // If the current section does not contain anything yet than this is its title
-                // this only happens at the beginning of a document
-                currentSection.section = fe;
-              } else {
-                // otherwise finish the current scene and start a new section
-                if (!isCurrentSceneEmpty()) {
-                  currentSection.content.push(currentScene);
-                  currentScene = new StructureScene();
-                }
-                res.push(currentSection);
-                currentSection = new StructureSection(fe);
-              }
-            } else {
-              // Sections of depth 4 and greater are used to structure scenes...
-              currentScene.content.push(fe);
-            }
+          if (fe.depth > 3) {
+            // Depth ≥ 4 headings are scene-internal subsections, not
+            // structural breaks. They flow into the current scene's
+            // content alongside dialogue and action.
+            currentScene.content.push(fe);
+          } else if (isSectionEmpty()) {
+            // First heading of the doc — adopt as the synthetic root
+            // section's title rather than pushing an empty bucket and
+            // starting a new section.
+            currentSection.section = fe;
+          } else {
+            flushSection();
+            currentSection.section = fe;
           }
           break;
+
         case "scene":
-          {
-            if (!isCurrentSceneEmpty()) {
-              // This is the start of a new scene.
-              currentSection.content.push(currentScene);
-            }
-            currentScene = new StructureScene(fe);
-          }
+          flushScene();
+          currentScene = new StructureScene(fe);
           break;
+
         case "synopsis":
-          {
-            if (
-              !currentScene.synopsis &&
-              !currentScene.scene &&
-              currentSceneHasOnlyBlankLines() &&
-              !currentSection.content.length &&
-              currentSection.section
-            ) {
-              // There was a section line and nothing other than blank
-              // lines followed it
-              // TODO: Deal with boneyards
-              currentSection.synopsis = fe;
-            } else if (
-              !currentScene.synopsis &&
-              currentScene.scene &&
-              currentSceneHasOnlyBlankLines()
-            ) {
-              currentScene.synopsis = fe;
-            } else {
-              currentScene.content.push(fe);
-            }
+          // A synopsis attached to a heading lives on `.synopsis`, not
+          // in `.content`. Two cases qualify, and both require that no
+          // other content has appeared between the heading and the
+          // synopsis (only blank-line actions): a synopsis right after
+          // a scene heading attaches to the scene; a synopsis right
+          // after a section heading (with no scenes yet) attaches to
+          // the section.
+          // TODO: Deal with boneyards.
+          if (
+            !currentScene.synopsis &&
+            currentScene.scene &&
+            sceneHasOnlyBlankLines()
+          ) {
+            currentScene.synopsis = fe;
+          } else if (
+            !currentScene.synopsis &&
+            !currentScene.scene &&
+            sceneHasOnlyBlankLines() &&
+            currentSection.section &&
+            !currentSection.content.length
+          ) {
+            currentSection.synopsis = fe;
+          } else {
+            currentScene.content.push(fe);
           }
           break;
 
@@ -195,23 +189,27 @@ export class FountainScript {
           break;
       }
     }
-    if (!isCurrentSceneEmpty()) {
-      currentSection.content.push(currentScene);
-    }
-    if (!isCurrentSectionEmpty()) {
-      res.push(currentSection);
-    }
-
-    const snippets =
-      snippetsStartIndex !== null &&
-      snippetsStartIndex < this.script.length - 1
-        ? this.parseSnippets(this.script.slice(snippetsStartIndex + 1))
-        : [];
+    flushSection();
 
     return {
-      sections: res,
-      snippets: snippets,
+      sections,
+      snippets: this.parseSnippets(snippetElements),
     };
+  }
+
+  /** Split `script` at the first depth-≤-3 `# … Snippets …` section.
+   *  The header itself is dropped; everything before goes to `main`,
+   *  everything after to `snippet`. Returns `[script, []]` when there
+   *  is no snippets section. */
+  private splitOffSnippetsSection(): [FountainElement[], FountainElement[]] {
+    const idx = this.script.findIndex(
+      (fe) =>
+        fe.kind === "section" &&
+        fe.depth <= 3 &&
+        this.sliceDocument(fe.range).toLowerCase().includes("snippets"),
+    );
+    if (idx === -1) return [this.script, []];
+    return [this.script.slice(0, idx), this.script.slice(idx + 1)];
   }
 
   private parseSnippets(elements: FountainElement[]): Snippets {

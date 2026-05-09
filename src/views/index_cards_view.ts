@@ -613,10 +613,10 @@ function renderSection(
   section: StructureSection,
   callbacks: ReadonlyViewCallbacks,
 ): void {
-  // Phantom synthetic section: no heading, no real scenes — a parser
-  // bucket left over from blank lines or stray actions. Render nothing
-  // so it doesn't surface a confusing second dashed `+` card alongside
-  // a sibling section with its own.
+  // Headerless synthetic section with no scene-bearing scenes (e.g.
+  // a doc that's all action and no scene headings). The cards view
+  // only renders scene cards, so there's nothing to show — and a
+  // dashed `+` card here would be confusing.
   const sectionHasRenderableContent = section.content.some(
     (c) => !!c.scene,
   );
