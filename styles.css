@@ -690,22 +690,33 @@
 .insertion-gutter {
 	position: absolute;
 	inset-block: 0;
-	width: 10px;
-	left: -10px;
-	z-index: 1;
+	width: 14px;
+	left: -12px;
+	z-index: 2;
 	display: flex;
+	flex-direction: column;
 	align-items: center;
 	justify-content: center;
+	gap: 6px;
 	cursor: pointer;
 	opacity: 0;
 	transition: opacity 0.15s ease;
+}
+
+/* Right-edge variant — anchors to the right side of a card slot. Used on
+   the last *direct* scene of a section so a new heading slides in
+   between the section's scenes and the next sibling section (or end-
+   of-doc). */
+.insertion-gutter-right {
+	left: auto;
+	right: -12px;
 }
 
 /* Thin vertical accent bar — same visual as drop-left/drop-right. */
 .insertion-gutter::before {
 	content: "";
 	position: absolute;
-	inset-block: 8px;
+	inset-block: 12px;
 	width: 3px;
 	left: 50%;
 	transform: translateX(-50%);
@@ -713,29 +724,127 @@
 	border-radius: 2px;
 }
 
-/* Circular "+" badge centered on the bar so the affordance reads as
-   "insert" rather than just a colored line. */
-.insertion-gutter .svg-icon {
+/* Stacked buttons inside the gutter — `+` (scene) on top, `#` (section)
+   below. Each is a circular accent badge that reads as a click target. */
+.insertion-gutter .gutter-btn {
 	position: relative;
 	z-index: 1;
+	width: 20px;
+	height: 20px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	background: var(--interactive-accent);
+	color: var(--text-on-accent);
+	border-radius: 50%;
+	box-sizing: border-box;
+	font-family:
+		var(--screenplay-font), "Courier Final Draft", "Courier",
+		var(--font-monospace);
+	font-size: 12px;
+	font-weight: var(--bold-weight);
+	line-height: 1;
+	cursor: pointer;
+}
+
+.insertion-gutter .gutter-btn:hover {
+	background: var(--interactive-accent-hover);
+}
+
+.insertion-gutter .gutter-btn .svg-icon {
 	width: 14px;
 	height: 14px;
 	color: var(--text-on-accent);
-	background: var(--interactive-accent);
-	border-radius: 50%;
-	padding: 2px;
-	box-sizing: border-box;
 }
 
 .insertion-gutter:hover {
 	opacity: 1;
 }
 
-.screenplay-index-cards.dragging-active .insertion-gutter {
+.screenplay-index-cards.dragging-active .insertion-gutter,
+.screenplay-index-cards.dragging-active .insertion-gutter .gutter-btn {
 	pointer-events: none;
 	opacity: 0;
 	transition: none;
 }
+
+/* Hover-revealed horizontal `+ section` bar. Used at the top of the doc
+   (when the doc starts with a section, or is empty) and inside the
+   tail-of-doc hover zone. NOT shown between sibling sections — the
+   vertical `#` gutter on the previous section's last scene covers that. */
+.section-insert-bar {
+	height: 18px;
+	margin: 6px 0 0;
+	position: relative;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: 4px;
+	opacity: 0;
+	transition: opacity 0.15s ease;
+}
+
+.section-insert-bar:hover {
+	opacity: 1;
+}
+
+.section-insert-bar::before {
+	content: "";
+	position: absolute;
+	left: 0;
+	right: 0;
+	top: 50%;
+	transform: translateY(-50%);
+	height: 3px;
+	background: var(--interactive-accent);
+	border-radius: 2px;
+	z-index: 0;
+}
+
+.section-insert-bar > .section-insert-btn {
+	position: relative;
+	z-index: 1;
+	background: var(--interactive-accent);
+	color: var(--text-on-accent);
+	padding: 2px 8px;
+	border-radius: 10px;
+	font-family:
+		var(--screenplay-font), "Courier Final Draft", "Courier",
+		var(--font-monospace);
+	font-size: 10px;
+	font-weight: var(--bold-weight);
+	line-height: 1.2;
+	cursor: pointer;
+	min-width: 26px;
+	text-align: center;
+}
+
+.section-insert-bar > .section-insert-btn:hover {
+	background: var(--interactive-accent-hover);
+}
+
+/* Hover zone at the bottom of the cards area. Gives the `+ section` bar
+   a generous hover target so the user doesn't have to chase 18px. */
+.section-tail-zone {
+	height: 36px;
+	margin-top: 12px;
+	display: flex;
+	align-items: center;
+}
+
+.section-tail-zone > .section-insert-bar {
+	flex: 1 1 auto;
+	margin: 0;
+}
+
+.section-tail-zone:hover > .section-insert-bar {
+	opacity: 1;
+}
+
+.section-tail-zone:has(> .section-insert-bar:hover) > .section-insert-bar {
+	opacity: 1;
+}
+
 
 .screenplay-index-card .drag-handle {
 	position: absolute;

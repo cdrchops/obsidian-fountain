@@ -42,6 +42,17 @@ import {
 
 export const VIEW_TYPE_FOUNTAIN = "fountain";
 
+/** How many leading newlines must precede an inserted line at `pos` so it
+ *  starts at column 0 with a blank-line separator from any preceding
+ *  paragraph content. */
+function newlinesNeededBefore(doc: string, pos: number): string {
+  if (pos === 0) return "";
+  const before = doc.slice(Math.max(0, pos - 2), pos);
+  if (before.endsWith("\n\n")) return "";
+  if (before.endsWith("\n")) return "\n";
+  return "\n\n";
+}
+
 /** Obsidian TextFileView for .fountain files, managing mode switching and document operations. */
 export class FountainView extends TextFileView {
   state: ViewState;
@@ -113,6 +124,7 @@ export class FountainView extends TextFileView {
       replaceText: (r, s) => this.replaceText(r, s),
       navigateToSceneContent: (r) => this.navigateToSceneContent(r),
       insertSceneAt: (pos) => this.insertSceneAt(pos),
+      insertSectionAt: (pos) => this.insertSectionAt(pos),
       moveSceneAcross: (args) => this.moveSceneAcross(args),
       getText: (r) => this.getText(r),
       openLink: (target, event) => this.openLink(target, event),
@@ -144,6 +156,37 @@ export class FountainView extends TextFileView {
     );
     if (!card) return;
     const pencil = card.querySelector<HTMLElement>(".pencil-button");
+    pencil?.click();
+  }
+
+  /** Insert a fresh `# New section` heading at `pos`, then auto-focus the
+   *  rename input. Pads the inserted text with leading newlines if `pos`
+   *  isn't already at a clean line boundary so the parser cleanly produces
+   *  a section element. */
+  private insertSectionAt(pos: number): void {
+    const doc = this.cachedScript.document;
+    const prefix = newlinesNeededBefore(doc, pos);
+    const expectedStart = pos + prefix.length;
+    if (this.state instanceof ReadonlyViewState) {
+      this.state.schedulePostRender(() =>
+        this.focusNewSectionHeading(expectedStart),
+      );
+    }
+    this.applyEditsToFile([
+      {
+        range: { start: pos, end: pos },
+        replacement: `${prefix}# New section\n\n`,
+      },
+    ]);
+  }
+
+  private focusNewSectionHeading(start: number): void {
+    const sectionEl = this.contentEl.querySelector<HTMLElement>(
+      `.section-heading-row .section[data-start="${start}"]`,
+    );
+    if (!sectionEl) return;
+    const row = sectionEl.closest(".section-heading-row");
+    const pencil = row?.querySelector<HTMLElement>(".pencil-button");
     pencil?.click();
   }
 

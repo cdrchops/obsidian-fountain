@@ -268,12 +268,19 @@ function editSceneHeadingHandler(
   headingInput.addEventListener("blur", () => commit());
   heading.replaceWith(headingInput);
   headingInput.focus();
+  // Pre-select the heading text so typing immediately replaces the
+  // placeholder (or existing heading) rather than appending to it.
+  headingInput.select();
 }
 
-/** Same shape as `editSceneHeadingHandler`, but the input edits only
- *  the title text — the `#` prefix (length = `section.depth`) and the
- *  trailing newline (if any) are reattached on commit so depth changes
- *  (a deferred feature) stay out of the rename path. */
+/** Inline rename input for a section heading. The input shows the full
+ *  `## Title` form so depth and title are edited through the same gesture:
+ *  `### Foo` becomes depth-3 + title "Foo"; an empty input deletes the
+ *  section header line entirely (children promote to the parent on
+ *  reparse); malformed input (no leading `#…`) cancels.
+ *
+ *  Pre-selects only the title portion so typing replaces the title
+ *  without nuking the `#…` prefix. */
 function editSectionHeadingHandler(
   row: HTMLElement,
   script: FountainScript,
@@ -287,12 +294,13 @@ function editSectionHeadingHandler(
   // After `depth` `#` characters the parser allows arbitrary whitespace
   // before the title; collapse it to a single space on rename.
   const titleText = fullText.slice(section.depth).trim();
+  const initialValue = `${"#".repeat(section.depth)} ${titleText}`;
 
   const computed = getComputedStyle(heading);
   const headingInput = createEl("input", {
     cls: "section",
     type: "text",
-    value: titleText,
+    value: initialValue,
   });
   headingInput.style.fontSize = computed.fontSize;
   headingInput.style.fontWeight = computed.fontWeight;
@@ -308,10 +316,30 @@ function editSectionHeadingHandler(
   const commit = () => {
     if (committed) return;
     committed = true;
+    const trimmed = headingInput.value.trim();
+    if (trimmed === "") {
+      // Empty input deletes the section header line. The parser then
+      // reparses without it, splicing any following content into the
+      // parent's flow — same source-level result as deleting the `#`
+      // line in the editor.
+      callbacks.replaceText(section.range, "");
+      callbacks.requestSave();
+      callbacks.reRender();
+      return;
+    }
+    const m = trimmed.match(/^(#+)\s+(.+)$/);
+    if (!m) {
+      // Malformed (e.g. no leading `#…`, or hashes without a title) —
+      // refuse the save and revert to the rendered heading.
+      callbacks.reRender();
+      return;
+    }
+    const newDepth = m[1].length;
+    const newTitle = m[2].trim();
     const newText =
-      "#".repeat(section.depth) +
+      "#".repeat(newDepth) +
       " " +
-      headingInput.value +
+      newTitle +
       (hasTrailingNewline ? "\n" : "");
     callbacks.replaceText(section.range, newText);
     callbacks.requestSave();
@@ -334,7 +362,10 @@ function editSectionHeadingHandler(
   headingInput.addEventListener("blur", () => commit());
   heading.replaceWith(headingInput);
   headingInput.focus();
-  headingInput.select();
+  // Select only the title portion so typing replaces the title without
+  // nuking the `#…` prefix (which would refuse the save).
+  const titleStart = section.depth + 1; // hashes + single space
+  headingInput.setSelectionRange(titleStart, headingInput.value.length);
 }
 
 function renderSynopsis(
@@ -373,32 +404,69 @@ function renderSynopsis(
   );
 }
 
+/** Append the two stacked buttons (`+` scene, `#` section) into a hover
+ *  gutter. Both buttons share a common visual; the `#` always inserts a
+ *  depth-1 section so depth selection lives in the rename input only. */
+function appendCardGutterButtons(
+  gutter: HTMLElement,
+  insertPos: number,
+  callbacks: ReadonlyViewCallbacks,
+): void {
+  gutter.createDiv(
+    {
+      cls: ["gutter-btn", "gutter-btn-scene"],
+      attr: { "aria-label": "Insert scene here" },
+    },
+    (btn) => {
+      setIcon(btn, "plus");
+      btn.addEventListener("click", (evt: MouseEvent) => {
+        evt.stopPropagation();
+        callbacks.insertSceneAt(insertPos);
+      });
+    },
+  );
+  gutter.createDiv(
+    {
+      cls: ["gutter-btn", "gutter-btn-section"],
+      attr: { "aria-label": "Insert section here" },
+    },
+    (btn) => {
+      btn.textContent = "#";
+      btn.addEventListener("click", (evt: MouseEvent) => {
+        evt.stopPropagation();
+        callbacks.insertSectionAt(insertPos);
+      });
+    },
+  );
+}
+
 /** Render an index card. The whole card click navigates to the scene; the
- *  pencil button opens an inline rename for the heading. */
+ *  pencil button opens an inline rename for the heading. Returns the slot
+ *  element so callers can attach a right-edge insertion gutter on the
+ *  last-direct-scene of a section without having to query for it. */
 function renderIndexCard(
   div: HTMLElement,
   path: string,
   script: FountainScript,
   scene: StructureScene,
   callbacks: ReadonlyViewCallbacks,
-): void {
-  if (!scene.scene) return;
+): HTMLElement | null {
+  if (!scene.scene) return null;
   const heading = scene.scene;
   const content = scene.content;
 
+  let slotRef: HTMLElement | null = null;
   div.createDiv({ cls: "card-slot" }, (slot) => {
-    // Insertion gutter — click to insert a new scene before this card.
+    slotRef = slot;
+    // Left insertion gutter — `+` (scene) and `#` (section), inserting at
+    // this scene's start position.
     slot.createDiv(
       {
         cls: "insertion-gutter",
         attr: { "data-insert-pos": String(scene.range.start) },
       },
       (gutter) => {
-        setIcon(gutter, "plus");
-        gutter.addEventListener("click", (evt: MouseEvent) => {
-          evt.stopPropagation();
-          callbacks.insertSceneAt(scene.range.start);
-        });
+        appendCardGutterButtons(gutter, scene.range.start, callbacks);
       },
     );
 
@@ -475,6 +543,59 @@ function renderIndexCard(
       },
     );
   });
+  return slotRef;
+}
+
+/** Append a right-edge insertion gutter to a card slot. Only used on the
+ *  last *direct* scene of a section: that's the position at which a new
+ *  scene/section would slide in between this section's own scenes and any
+ *  following sibling-section heading (or the end of the document). */
+function attachRightGutter(
+  slot: HTMLElement,
+  insertPos: number,
+  callbacks: ReadonlyViewCallbacks,
+): void {
+  slot.createDiv(
+    {
+      cls: ["insertion-gutter", "insertion-gutter-right"],
+      attr: { "data-insert-pos": String(insertPos) },
+    },
+    (gutter) => {
+      appendCardGutterButtons(gutter, insertPos, callbacks);
+    },
+  );
+}
+
+/** Hover-revealed horizontal bar that inserts a `# section` heading at
+ *  `insertPos`. Used at the top of the doc and in the tail zone — not
+ *  between every pair of sections (the vertical `#` button on the
+ *  preceding section's last scene covers that). */
+function renderSectionInsertBar(
+  parent: HTMLElement,
+  insertPos: number,
+  callbacks: ReadonlyViewCallbacks,
+): void {
+  parent.createDiv(
+    {
+      cls: "section-insert-bar",
+      attr: { "data-insert-pos": String(insertPos) },
+    },
+    (bar) => {
+      bar.createDiv(
+        {
+          cls: "section-insert-btn",
+          attr: { "aria-label": "Insert a # section here" },
+        },
+        (btn) => {
+          btn.textContent = "+ section";
+          btn.addEventListener("click", (evt: MouseEvent) => {
+            evt.stopPropagation();
+            callbacks.insertSectionAt(insertPos);
+          });
+        },
+      );
+    },
+  );
 }
 
 /** Render a section, that is a combination of a heading followed by all the
@@ -487,6 +608,15 @@ function renderSection(
   section: StructureSection,
   callbacks: ReadonlyViewCallbacks,
 ): void {
+  // Phantom synthetic section: no heading, no real scenes/subsections —
+  // a parser bucket left over from blank lines or stray actions. Render
+  // nothing so it doesn't surface a confusing second dashed `+` card
+  // alongside a sibling section with its own.
+  const sectionHasRenderableContent = section.content.some(
+    (c) => (c.kind === "scene" && !!c.scene) || c.kind === "section",
+  );
+  if (!section.section && !sectionHasRenderableContent) return;
+
   if (section.section) {
     const sec = section.section;
     const title = script.sliceDocument(sec.range);
@@ -524,12 +654,25 @@ function renderSection(
     renderSynopsis(parent, script, section.synopsis, section.synopsis.range.start);
   }
   parent.createDiv({ cls: "screenplay-index-cards" }, (sectionDiv) => {
+    let lastSceneSlot: HTMLElement | null = null;
+    let lastSceneEnd: number | null = null;
+    let renderedAnyContent = false;
     for (const el of section.content) {
       switch (el.kind) {
-        case "scene":
-          renderIndexCard(sectionDiv, path, script, el, callbacks);
+        case "scene": {
+          // Synthetic scenes (no `.scene` heading — usually a stray blank
+          // action line at the start/end of a section) render nothing,
+          // so don't count them as renderable content.
+          const slot = renderIndexCard(sectionDiv, path, script, el, callbacks);
+          if (slot) {
+            renderedAnyContent = true;
+            lastSceneSlot = slot;
+            lastSceneEnd = el.range.end;
+          }
           break;
+        }
         case "section":
+          renderedAnyContent = true;
           renderSection(sectionDiv, path, script, el, callbacks);
           break;
         default:
@@ -539,18 +682,30 @@ function renderSection(
           break;
       }
     }
-    sectionDiv.createDiv(
-      {
-        cls: ["screenplay-index-card", "dashed"],
-        attr: {},
-      },
-      (div) => {
-        setIcon(div, "plus");
-        div.addEventListener("click", (_evt: MouseEvent) => {
-          callbacks.insertSceneAt(endOfRange(section.range).start);
-        });
-      },
-    );
+    // Right-edge gutter on the last *direct* scene of this section. The
+    // insertion position is the boundary just past the last scene's
+    // trailing blank line — which puts a new heading either before the
+    // next sibling section or at end-of-doc, depending on context.
+    if (lastSceneSlot && lastSceneEnd !== null) {
+      attachRightGutter(lastSceneSlot, lastSceneEnd, callbacks);
+    }
+    // Visually-empty section: persistent dashed `+` aim point. Sections
+    // that rendered actual scenes/subsections delegate "add at end" to
+    // the right gutter above so the affordance budget stays small.
+    if (!renderedAnyContent) {
+      sectionDiv.createDiv(
+        {
+          cls: ["screenplay-index-card", "dashed"],
+          attr: {},
+        },
+        (div) => {
+          setIcon(div, "plus");
+          div.addEventListener("click", (_evt: MouseEvent) => {
+            callbacks.insertSceneAt(endOfRange(section.range).start);
+          });
+        },
+      );
+    }
   });
 }
 
@@ -567,7 +722,60 @@ export function renderIndexCards(
 ): void {
   const structure = script.structure();
   div.empty();
-  for (const s of structure.sections) {
-    renderSection(div, path, script, s, callbacks);
+
+  // The structure builder always pushes at least one (possibly synthetic)
+  // section, so `sections.length === 0` doesn't actually mean "empty doc"
+  // — instead, look for any visible content (a real section heading, a
+  // scene with a heading, or a nested section).
+  const hasVisibleContent = structure.sections.some(
+    (s) =>
+      !!s.section ||
+      s.content.some(
+        (c) => (c.kind === "scene" && !!c.scene) || c.kind === "section",
+      ),
+  );
+
+  // Top-of-doc bar: shown when the doc starts with a section heading (so
+  // the user can prepend a sibling section above it) or when the doc has
+  // no visible content (alongside the dashed `+` card so section-first
+  // and scene-first starts both have an obvious aim point). The insert
+  // position is the first section's start when one exists — that keeps a
+  // title page intact when one sits in front of the section.
+  const firstSection = structure.sections[0]?.section;
+  if (!hasVisibleContent) {
+    renderSectionInsertBar(div, 0, callbacks);
+  } else if (firstSection) {
+    renderSectionInsertBar(div, firstSection.range.start, callbacks);
   }
+
+  if (!hasVisibleContent) {
+    // Render the dashed `+` card inside a regular grid — same layout as
+    // an empty section, so the position doesn't shift around as the user
+    // adds content.
+    div.createDiv({ cls: "screenplay-index-cards" }, (grid) => {
+      grid.createDiv(
+        {
+          cls: ["screenplay-index-card", "dashed"],
+          attr: { "aria-label": "Add the first scene" },
+        },
+        (card) => {
+          setIcon(card, "plus");
+          card.addEventListener("click", () => {
+            callbacks.insertSceneAt(0);
+          });
+        },
+      );
+    });
+  } else {
+    for (const s of structure.sections) {
+      renderSection(div, path, script, s, callbacks);
+    }
+  }
+
+  // Tail-of-doc bar — persistent insertion at end-of-doc. Wrapped in a
+  // hover zone so the bar surfaces when the cursor approaches the bottom
+  // of the cards area, not just on the bar's exact pixels.
+  div.createDiv({ cls: "section-tail-zone" }, (zone) => {
+    renderSectionInsertBar(zone, script.document.length, callbacks);
+  });
 }

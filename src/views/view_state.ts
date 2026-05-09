@@ -22,6 +22,8 @@ export type ReadonlyViewCallbacks = {
   navigateToSceneContent: (sceneRange: Range) => void;
   /** Insert a fresh scene heading at `pos` and auto-focus its rename input. */
   insertSceneAt: (pos: number) => void;
+  /** Insert a fresh `# section` heading at `pos` and auto-focus its rename input. */
+  insertSectionAt: (pos: number) => void;
   /** Move a scene from `srcPath` (at `srcRange`) to `dstPath` (inserted at
    *  `dstPos`). When `srcPath === dstPath` both edits go through a single
    *  batch; otherwise the source delete and destination insert are routed

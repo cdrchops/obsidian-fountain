@@ -9,16 +9,14 @@ up to scene parity.
 Design was validated through a standalone prototype at
 `design/index_cards_prototype.html` (mock data, no Fountain parser).
 
-Implemented in v1: pencil-rename on section headings.
-
 ## Status
 
-| Operation              | Scenes (today)            | Sections                                |
+| Operation              | Scenes                    | Sections                                |
 | ---                    | ---                       | ---                                     |
-| Rename heading         | pencil → inline input     | pencil (v1)                             |
-| Insert at position     | hover gutter, dashed `+`  | designed below                          |
-| Delete (header only)   | n/a                       | designed: empty rename input            |
-| Change depth           | n/a                       | designed: edit `#`s in rename input     |
+| Rename heading         | pencil → inline input     | pencil → inline input                   |
+| Insert at position     | hover gutter, dashed `+`  | hover gutter `#`, edge `+ section` bars |
+| Delete (header only)   | n/a                       | empty rename input                      |
+| Change depth           | n/a                       | edit `#`s in rename input               |
 | Reorder via drag       | grip handle, drop targets | **postponed**                           |
 | Edit synopsis          | editor only (by design)   | editor only                             |
 | Cut/copy/paste as text | ⌘⇧L + ⌘X / ⌘C             | follow-up                               |
@@ -191,15 +189,3 @@ These are accepted trade-offs, not bugs to fix.
 - **Inserting a `#` at deeper nesting** (inside a `##`) is correct
   in source semantics but the prototype's tree mutation is naive;
   production must round-trip through the parser.
-
-## Open questions before implementation
-
-- Verify "delete section header by clearing the rename input" with
-  a real user — the gesture is novel. Fallback if it surprises:
-  reject empty input and add an explicit delete affordance.
-- Confirm the source-text-edit-then-reparse round-trip handles the
-  deeper-nesting `#` insertion case across common authoring
-  patterns. Build test cases before shipping.
-- Tail-zone hover area on very long documents — does it interfere
-  with scrolling? Prototype says no, but worth confirming on a
-  real-sized script.
