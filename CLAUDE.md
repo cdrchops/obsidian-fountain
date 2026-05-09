@@ -4,7 +4,7 @@
 
 - **Views**: Readonly/edit modes with seamless toggling, PDF export, rehearsal mode with blackout
 - **Sidebar**: TOC with navigation, synopsis/notes toggles, snippets with drag-and-drop
-- **Index Cards**: Click card → jump to editor at start-of-scene-content; pencil renames scene and section headings inline; hover-revealed gutter inserts a new scene at any position; drag-drop reordering across files; ⌘⇧I toggles cards ↔ editor preserving position. See `design/improved_index_card_view.md`.
+- **Index Cards**: Click card → jump to editor at start-of-scene-content; pencil renames scene/section headings inline (section rename also handles depth via leading `#`s and deletion via empty input); hover gutter on each card has stacked `+` (scene) / `#` (section) buttons, with a right-edge variant on the last scene of a section; horizontal `+ section` bars at top-of-doc and tail-of-doc; empty section / empty doc show a dashed `+` card; drag-drop reordering across files; ⌘⇧I toggles cards ↔ editor preserving position. See `design/improved_index_card_view.md` and `design/section_editing_in_index_cards.md`.
 - **Snippets**: Store in `# Snippets` section, Mod+Shift+X/C to move/copy selection, drag into script/sidebar
 - **Editor**: Scene folding (Ctrl+Shift+[ ]), character name completion, ⌘⇧L selects the current scene as text (compose with ⌘X / ⌘C for delete / duplicate)
 - **Margin Marks**: `[[@marker]]` syntax renders in margin

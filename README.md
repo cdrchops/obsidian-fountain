@@ -9,7 +9,7 @@ A plugin for writing screenplays in [Fountain format](https://fountain.io) insid
 - **Live screenplay formatting** as you type — follow Fountain syntax, the editor handles the formatting.
 - **Near-print readonly view** with optional hiding of notes, synopsis, and boneyard.
 - **PDF export** with configurable paper size, scene heading style, and synopsis/notes inclusion.
-- **Index card view** — click a card to jump back to the editor at that scene; rename headings inline; insert new scenes between any two cards; drag-reorder across files; ⌘⇧I round-trips between cards and editor.
+- **Index card view** — click a card to jump back to the editor at that scene; rename scene and section headings inline; insert scenes or sections at any position via hover gutters; change section depth or delete a section heading from the same rename input; drag-reorder across files; ⌘⇧I round-trips between cards and editor.
 - **Outline-style sidebar** that doubles as a planning tree — sections, synopses, and per-scene todos, all click-to-jump.
 - **Rehearsal mode** that blacks out a character's dialogue, so you can actually rehearse from the script.
 
@@ -95,12 +95,15 @@ A round-trip with no edits leaves you (approximately) where you started.
 
 - **Click anywhere on a card** — jump back to the editor at that scene.
 - **Pencil icon (top-right)** — rename the heading inline. `Enter` saves, `Esc` cancels, click outside also saves.
+- **Pencil next to a section heading** — same gesture, but the input shows the full `## Title` form so you can change depth or, by clearing the input, delete the section heading entirely.
 - **Grip handle (top-left)** — drag to reorder. Same drag works across open files.
 - **Todo lines** on the card jump to the todo's exact location, not the scene heading.
 
-### Inserting scenes
+### Inserting scenes and sections
 
-Hover between any two cards (or before the first / after the last) to reveal a thin gutter. Click it to insert a new `.SCENE HEADING` placeholder at that position; the new card auto-focuses its rename input so you can start typing immediately. The dashed `+` card at the end of each section is the same affordance for empty sections.
+Hover the left edge of any card (or the right edge of the last scene in a section) to reveal a thin gutter with two stacked buttons: `+` inserts a new `.SCENE HEADING` placeholder, `#` inserts a new `# section`. The new card or heading auto-focuses its rename input so you can start typing immediately. Empty sections show a dashed `+` card as the persistent aim point.
+
+A horizontal `+ section` bar shows above the first section (when the doc starts with one) and at the bottom of the doc, so you can prepend or append a section without finding a specific card to anchor to.
 
 ### Cut / copy / duplicate scenes
 
