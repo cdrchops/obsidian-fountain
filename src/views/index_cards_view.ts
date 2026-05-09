@@ -277,7 +277,8 @@ function editSceneHeadingHandler(
  *  `## Title` form so depth and title are edited through the same gesture:
  *  `### Foo` becomes depth-3 + title "Foo"; an empty input deletes the
  *  section header line entirely (children promote to the parent on
- *  reparse); malformed input (no leading `#…`) cancels.
+ *  reparse); malformed input (no leading `#…`, or `####+ …` requesting
+ *  a depth past the cards-view convention) cancels.
  *
  *  Pre-selects only the title portion so typing replaces the title
  *  without nuking the `#…` prefix. */
@@ -335,6 +336,14 @@ function editSectionHeadingHandler(
       return;
     }
     const newDepth = m[1].length;
+    if (newDepth > 3) {
+      // The cards view only models depth 1–3 sections (the rest are
+      // scene-internal subsections in `script.structure()`). Refuse
+      // rather than silently truncate, so the user sees their input
+      // didn't take and can re-type at a valid depth.
+      callbacks.reRender();
+      return;
+    }
     const newTitle = m[2].trim();
     const newText =
       "#".repeat(newDepth) +
@@ -620,7 +629,10 @@ function renderSection(
   if (section.section) {
     const sec = section.section;
     const title = script.sliceDocument(sec.range);
-    const hTag = `h${sec.depth ?? 1}` as keyof HTMLElementTagNameMap;
+    // The cards view models sections of depth 1–3; deeper headings live
+    // inside scenes (see `script.structure()`). Clamp defensively in
+    // case some other path constructs a deeper section.
+    const hTag = `h${Math.min(3, sec.depth ?? 1)}` as keyof HTMLElementTagNameMap;
     if (
       title
         .toLowerCase()

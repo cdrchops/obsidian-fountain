@@ -273,6 +273,31 @@ describe("Index card section editing", function () {
     expect(onDisk).toContain("INT. SCENE - DAY");
   });
 
+  it("section rename refuses depths past 3 (cards view models 1–3 only)", async function () {
+    await deletePath(FILE);
+    await createFile(
+      FILE,
+      ["# Top", "", "INT. SCENE - DAY", "", "Content.", ""].join("\n"),
+    );
+    await obsidianPage.openFile(FILE);
+    await browser.pause(300);
+    await switchToIndexCards(FILE);
+    await browser.pause(300);
+
+    expect(
+      await clickInView(FILE, ".section-heading-row .pencil-button"),
+    ).toBe(true);
+    await browser.pause(300);
+
+    // Depth 4 — should be refused; the source stays as `# Top`.
+    await commitRename("#### Top");
+    await browser.pause(500);
+
+    const onDisk = await readFile(FILE);
+    expect(onDisk).toMatch(/^# Top$/m);
+    expect(onDisk).not.toContain("#### Top");
+  });
+
   it("changing the # prefix in the rename input changes the heading depth", async function () {
     await deletePath(FILE);
     await createFile(

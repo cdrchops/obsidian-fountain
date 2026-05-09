@@ -5,11 +5,26 @@ This is the why-doc for the section affordances in the index card view
 lives in `src/views/index_cards_view.ts` and the user-facing reference
 in `README.md`. Companion: `design/improved_index_card_view.md`.
 
+## Section depth: 1–3 only
+
+The cards view models sections of depth 1–3. `script.structure()`
+treats `####+` headings as scene-internal subsections (they end up
+in `scene.content`, not as their own structural section), and the
+section rename refuses to commit a depth past 3 — empty rename and
+malformed-input rules apply equally to "too deep."
+
+This is a long-standing convention that wasn't previously written
+down. The split is: depths 1–3 are the script's outline (act, part,
+sequence) and belong on the cards; deeper hashes are author notes
+inside a scene. The h-tag mapping (`h1`/`h2`/`h3`) is clamped so
+nothing slips through and renders as raw text.
+
 ## Why depth and deletion live in the rename input
 
 The rename input shows the full `## Title` form. Editing the `#`s
-changes depth; clearing the input deletes the section heading line and
-lets its children flow up to the parent on reparse.
+changes depth (within 1–3); clearing the input deletes the section
+heading line and lets its children flow up to the parent on
+reparse.
 
 This deliberately exposes a sliver of Fountain syntax (`#`s) in the
 cards view. Acceptable because the view *already* shows `#`/`##`/
