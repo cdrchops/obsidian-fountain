@@ -202,6 +202,16 @@ export class EditorViewState implements ViewState {
     this.cmEditor.focus();
   }
 
+  /** Align `r.start` to the top of the viewport without margin or selection
+   *  changes. Used by the edit↔readonly toggle to restore scroll position:
+   *  `scrollToHere`'s 50px ergonomic margin would push the target down on
+   *  every readonly→editor leg, drifting the view upward across toggles. */
+  scrollLineToTop(r: Range): void {
+    this.cmEditor.dispatch({
+      effects: EditorView.scrollIntoView(r.start, { y: "start", yMargin: 0 }),
+    });
+  }
+
   focus(): void {
     this.cmEditor.focus();
   }

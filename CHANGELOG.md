@@ -1,5 +1,9 @@
 # Changelog
 
+## [0.34.1] - Edit↔Readonly Toggle Drift Fix
+
+- **Fix**: Repeatedly toggling between edit and readonly modes no longer drifts the view upward toward the title page. The editor's `scrollToHere` carries a 50px ergonomic margin so click-to-navigate doesn't land flush at the very top — but the toggle's scroll-restoration path was using the same call, so each readonly→edit leg pushed the anchor line 50px below the top, and the next readonly→edit cycle re-anchored on whatever was now at the top. Restoration now uses a margin-free, selection-preserving variant; click-to-navigate still keeps the margin.
+
 ## [0.34.0] - Section Editing in Index Cards
 
 Sections are now first-class citizens in the index card view, same as scenes — you can rename them, change their depth, delete them, and insert new ones at any position without leaving the card view.

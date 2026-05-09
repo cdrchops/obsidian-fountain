@@ -551,14 +551,15 @@ export class FountainView extends TextFileView {
       if (this.state instanceof ReadonlyViewState) {
         this.readonlyViewState = this.state.pstate;
       }
-      this.state = new EditorViewState(
+      const editorState = new EditorViewState(
         this.contentEl,
         this.file?.path ?? "",
         text,
         this.editorCallbacks(),
         this.spellCheckEnabled,
       );
-      if (firstVisibleLine) this.state.scrollToHere(collapseRangeToStart(firstVisibleLine));
+      this.state = editorState;
+      if (firstVisibleLine) editorState.scrollLineToTop(firstVisibleLine);
     }
     this.toggleEditAction.empty();
     setIcon(this.toggleEditAction, this.isEditMode() ? "book-open" : "edit");
