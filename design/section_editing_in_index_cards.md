@@ -3,215 +3,203 @@
 The index card view is the structural read on a script (see
 `design/improved_index_card_view.md`). Until now it could only mutate
 *scenes* — rename, insert, drag, drop. Sections were render-only.
-This document covers the work to bring section-level shape edits up to
-parity with scenes.
+This document covers the design for bringing section-level shape edits
+up to scene parity.
 
-Implemented in v1: pencil-rename on section headings (mirrors the
-scene-card pencil; edits the title text and preserves the `#…` prefix
-and trailing newline verbatim, so depth is untouched).
+Design was validated through a standalone prototype at
+`design/index_cards_prototype.html` (mock data, no Fountain parser).
 
-Everything below is deferred work and the rationale that should
-constrain it.
+Implemented in v1: pencil-rename on section headings.
 
-## Operations to support
+## Status
 
-The shape-vs-content split from the cards-view rationale doc applies
-unchanged: sections deserve the same shape operations scenes already
-have, and content edits stay in the editor.
+| Operation              | Scenes (today)            | Sections                                |
+| ---                    | ---                       | ---                                     |
+| Rename heading         | pencil → inline input     | pencil (v1)                             |
+| Insert at position     | hover gutter, dashed `+`  | designed below                          |
+| Delete (header only)   | n/a                       | designed: empty rename input            |
+| Change depth           | n/a                       | designed: edit `#`s in rename input     |
+| Reorder via drag       | grip handle, drop targets | **postponed**                           |
+| Edit synopsis          | editor only (by design)   | editor only                             |
+| Cut/copy/paste as text | ⌘⇧L + ⌘X / ⌘C             | follow-up                               |
 
-| Operation                         | Scenes (today)            | Sections          |
-| ---                               | ---                       | ---               |
-| Rename heading                    | pencil → inline input     | pencil (v1)       |
-| Insert before/after               | hover gutter, dashed `+`  | deferred          |
-| Reorder via drag                  | grip handle, drop targets | deferred          |
-| Change depth / type               | n/a                       | deferred          |
-| Edit synopsis                     | editor only (by design)   | editor only       |
-| Cut/copy/paste as text            | ⌘⇧L + ⌘X / ⌘C             | deferred (note 1) |
+## Insertion
 
-Note 1: ⌘⇧L currently selects the *current scene* via
-`scene.range`. The natural extension is "select current section"
-(its full subtree range). Probably worth adding alongside or just
-after section drag, because the same range computation backs both.
+Section insertion happens through two affordances, chosen so the
+common case (scene-shaped operation) stays one click.
 
-## Why insert+drag are bundled together
+### Vertical gutter on scene cards — `+` and `#`
 
-A new section is degenerate when there is no content. Once you can
-insert a section, the immediate next question is "and how do I move
-the existing scenes under it?" — which is the drag-drop story. So
-the two features together turn cards into a real outliner; either
-alone is awkward. They can ship in separate PRs but they should be
-designed together.
+The hover-revealed vertical gutter that already inserts a scene now
+carries two stacked buttons: `+` (scene) and `#` (section). The
+gutter appears at:
 
-## Insertion: position + depth
+- The left edge of any scene card → inserts before that card.
+- The right edge of the last *direct* scene of a section → inserts
+  at the boundary between this section's direct scenes and any
+  nested subsection (or end of section if no subsection follows).
 
-Position is the same gutter-and-trailing-`+` story as scenes. The new
-question is depth.
+Each gutter has its **own** hover trigger, not the card-slot's.
+That avoids surfacing both left and right gutters at once when the
+cursor is on the body of the last card.
 
-Three choices in increasing UI weight:
+The `#` button always creates a depth-1 (`#`) section. Promote later
+via the pencil. The cards view does not expose a depth picker on
+insert.
 
-1. **Inherit from neighbor.** The new section gets the depth of the
-   nearest existing section header. Zero new chrome. Edge case: the
-   document has no sections yet — default to `#`.
-2. **Tab/Shift-Tab in the rename input.** While the freshly-inserted
-   section's heading input is focused, Tab indents (`#` → `##`),
-   Shift-Tab outdents. Familiar to outliner users, invisible to people
-   who don't need it. Composes with (1): inherit depth, then nudge.
-3. **Persistent depth control on cards.** A small `#`/`##`/`###`
-   indicator next to the pencil. Discoverable but adds a second
-   card-level affordance. The rationale doc warns against drifting
-   toward `⋯`-menu territory; this is on the way.
+### Horizontal `+ section` bar — only at the edges
 
-Recommended: (1) + (2). (3) is overkill for a feature most users will
-touch rarely.
+It appears in two places only:
 
-## Changing depth of an existing section
+- **Above the first section** when the document either has no
+  preceding root-level scenes, or is empty.
+- **At the bottom of the document** (the tail zone) — the persistent
+  insertion point at end-of-doc.
 
-Distinct from insertion: the user has a `# Section A` and wants it
-to become `## Section A`. The simplest possible implementation drops
-the "edit just the title" rule of the v1 pencil — let the user type
-the `#`s themselves, and refuse to save anything that doesn't start
-with `#`+space.
+It does **not** appear above every section. Inserting a section
+between adjacent sections is reachable via the vertical `#` button on
+the previous section's last direct scene. Adding a horizontal bar at
+every section boundary was prototyped and judged redundant.
 
-Cost: exposes a sliver of Fountain syntax to the cards view. Benefit:
-zero new UI; the existing rename input does it.
+Both bars on an empty doc do the same thing (push a section to root),
+but both are shown anyway so the user doesn't have to wonder which
+one to use — wherever you hover, the affordance is there.
 
-This does *not* cascade to children. Increasing a section's depth
-without also increasing its descendants' depth flattens the
-hierarchy:
+### Dashed `+` card — empty sections and empty docs
 
-```fountain
-# Act One         →   ## Act One
-## Scene work     →   ## Scene work    (now a sibling of Act One)
-### Beat          →   ### Beat         (now a child of Scene work)
-```
+An empty section shows a single dashed `+` card. It is the
+persistent aim point for "add the first scene here," and it is a
+scene-drag drop target — which solves the older
+"empty-sections-are-unreachable-as-drop-destinations" bug from before
+this redesign.
 
-Most real depth changes want the cascade — "I'm pushing this section
-down a level along with everything under it." So the simple-edit
-approach is a useful first step but it is not the complete depth-edit
-story. The complete story is one of:
+An empty document shows the same dashed `+` card *plus* the top-of-
+doc and tail `+ section` bars, so the user can start by defining
+sections first or by defining scenes first. The dashed card click
+adds a scene (same semantics as the dashed `+` elsewhere); the
+section bars add a section.
 
-- A separate "indent / outdent subtree" command (keyboard or menu)
-  that emits edits for the whole subtree at once. Composes cleanly
-  with the simple-edit approach, which then becomes the escape hatch
-  for the rare "I really do want only this header to change."
-- Tab/Shift-Tab during rename, with cascade implicit. Simpler from
-  the user's side but requires the rename input to know about the
-  subtree.
+### Auto-rename on section insert
 
-The first path keeps the rename input dumb. Recommended.
+Every section-insertion path (vertical `#` button, horizontal
+`+ section` bar, top-of-doc bar, tail-zone bar) opens the rename
+input on the freshly-inserted section. The input pre-selects only
+the title portion (after the `#…` prefix), so typing replaces just
+the title without breaking the rename's parse rules.
 
-## Insertion: which gutter inserts what
+### Tree placement of `#` insertions
 
-Today the per-card insertion gutter inserts a *scene* before that
-card. The trailing dashed `+` inserts a scene at the end of the
-current section. Sections need their own insert affordances without
-making the existing ones ambiguous.
+The cards view operates on a parsed tree, but Fountain semantics are
+source-text driven. The `#` button is conceptually "insert
+`# New section\n` at the corresponding source offset, then reparse."
 
-Two viable shapes:
+Two cases are well-defined and worth describing in product terms:
 
-- **Section gutter above section headings, scene gutter on cards
-  unchanged.** A new hover-revealed insertion bar attached to each
-  `.section-heading-row` inserts a section *before* that section. The
-  trailing dashed `+` stays scene-only. To add the very first section
-  in a document or insert a section between two scenes, use a sibling
-  affordance at section-content boundaries.
+- **At root**: the new `#` is a sibling of the existing top-level
+  sections at the chosen index.
+- **Inside a top-level section**: the new `#` ends the parent
+  section in source order. Everything from the click-index onwards
+  becomes the new section's content; the new section is placed as
+  a root-level sibling of the parent.
 
-- **`+` chooser.** The dashed `+` and gutter both grow a tiny
-  picker ("scene" / "section"). One affordance covers both. Cost: an
-  extra click, and the chooser is visual noise in the common case
-  (scenes vastly outnumber sections in a typical script).
+A deeper case (clicking `#` inside a nested subsection) ends both
+the nested section and its parent in source. The prototype handles
+this naively (just splice in place), which produces a wrong tree;
+production code should emit the source-text edit and let the parser
+produce the tree. The cards view re-renders from the fresh parse.
 
-Recommended: dedicated section gutter on section headers. Keeps the
-common scene-insertion path one click. Section insertion is rare
-enough that "find a section header, hover above it" is acceptable.
+## Depth changes — and deletion — through the rename input
 
-## Drag-drop: same-depth reordering only
+Depth changes happen through the rename input. The input shows
+`## Title` (leading `#`s plus title); the user edits either.
 
-A section drag moves the entire subtree (heading + all children).
-The drag source is a grip handle on `.section-heading-row`, mirroring
-the scene-card grip.
+On commit:
 
-For the v1 of this feature, drop targets are restricted to
-**siblings of the dragged section at the same depth**. Drop indicators
-appear only between same-depth section headers (and at the very
-beginning/end of the parent section's content).
+- `## Foo` → keeps depth 2, sets title `Foo`.
+- Change `##` to `###` → depth becomes 3, title unchanged.
+- **Empty input → delete the section header.** Children are spliced
+  into the parent at the same position. Mirrors the source-level
+  result of deleting the `#` line.
+- Malformed input (no leading `#…`) → save refused; rename cancels.
 
-Why same-depth only:
+**No cascade.** Children retain their own depth. A `#` change in
+source doesn't auto-renumber `##` children, and we mirror that.
+"Push the whole subtree down a level" is a *separate* command
+(indent/outdent subtree), not part of rename. Out of scope here.
 
-- The visual story for "drop a `##` into a different `#`'s body and
-  re-parent it" is genuinely hard. The drop indicator has to convey
-  both *position* and *new parent*, and the latter has no obvious
-  visual vocabulary. Cards' current insertion bar is purely
-  positional — re-parenting needs something different.
-- Most real reorders are sibling reorders ("Act 2 should come before
-  Act 3"). Re-parenting is rare and is well-served by editor
-  cut-and-paste.
+This deliberately exposes a sliver of Fountain syntax (`#`s) in the
+cards view. Acceptable because the view *already* shows `#`/`##`/
+`###` in section headings, and the trade buys a single uniform
+gesture covering insert-then-promote and existing-depth-change with
+no extra UI.
 
-Re-parenting via drag remains a possible future feature; the
-visual-story problem is the actual blocker, not the edit math.
+The deletion-by-empty-input gesture is novel; the alternative
+(reject empty input, add a separate "delete section" affordance)
+was rejected because the heading row's affordance budget is tight
+and the gesture is intuitive once seen.
 
-## Drag-drop: dropping scenes across sections
+## Postponed: drag-and-drop of sections
 
-Today scene drops only land *next to* an existing scene card —
-`installDragAndDropHandlers` only attaches to real cards, not the
-trailing dashed `+`, and not to section headers. Consequence: a
-section with zero scenes (or any boundary with no adjacent scene) is
-unreachable as a drop destination. With
+Section drag-reorder is **deliberately postponed**. The prototype
+implemented same-depth-only sibling reorder, and concrete reasons to
+hold:
 
-```fountain
-# Section 1
-# Section 2
-.A SCENE
-# Section 3
-```
+- The drop-target story is awkward. Same-depth-only is too
+  restrictive for the real reorders authors want; full re-parenting
+  needs visual vocabulary the current insertion bar doesn't provide.
+- Most reorders in practice are within-act scene reorders, already
+  handled by scene drag.
+- Cut-and-paste in the editor (⌘⇧L → ⌘X / ⌘C / ⌘V) handles the
+  rare cross-cut section-level move and works across files.
 
-`A SCENE` cannot be dropped before `# Section 1`, between `Section 1`
-and `Section 2`, or after `# Section 3` — all four positions have no
-neighboring card to anchor a drop.
+When this comes back, the design questions to revisit:
 
-The fix is to make the dashed `+` placeholder a drop target (drop
-inserts at the placeholder's position rather than triggering insert),
-and to make the section-heading rows themselves drop targets at their
-start/end. This is wholly separable from the section-drag work and
-could ship first; tracking it here because the same set of code paths
-is touched.
-
-A clearer destination cue when a scene crosses a section boundary is
-a smaller follow-up to that work.
+- Is same-depth-only enough, or does v1 need re-parenting?
+- Visual vocabulary for re-parent drops vs. position-only drops.
+- The cascade question for keyboard-driven moves (⌃⌘← / ⌃⌘→ in
+  Scrivener's binder is the precedent — children move with the
+  parent).
 
 ## Synopsis editing on cards
 
-Same constraint as scene synopses: section synopses contain styled
-text (`[[>...]]` links, formatting, notes), which can't be edited by
-a plain `<textarea>`. The fast path is unchanged: click into the
-editor, edit, ⌘⇧I back. Out of scope for the section-editing work.
+Out of scope, same constraint as scene synopses: section synopses
+contain styled text (`[[>...]]` links, formatting, notes) that
+plain `<textarea>` can't edit. Click into the editor, edit, ⌘⇧I
+back.
 
 ## Affordance budget on the section-heading row
 
-Today the row carries: heading text + pencil. Adding insertion gutter,
-drag handle, and (optionally) depth indicator pushes against the
-"keep cards quiet" constraint. Order of priority if we decide some
-have to go:
+After this work the heading row carries: heading text + pencil.
+Drag grip is not added (postponed). Depth indicator is not added —
+depth lives in the rename input. The row stays quiet, matching the
+"cards are not a second editor" constraint from
+`improved_index_card_view.md`.
 
-1. Pencil (rename) — already there, never remove.
-2. Drag grip — needed for reorder; without it, no drag.
-3. Insertion gutter — affordance, can be a sibling element rather
-   than on the row itself.
-4. Depth indicator — only if we reject Tab/Shift-Tab.
+## Known limitations of the chosen approach
+
+These are accepted trade-offs, not bugs to fix.
+
+- **Touch / mobile.** All gutters are hover-revealed. The cards view
+  already relies on hover for pencil and grip, so this redesign
+  doesn't make mobile worse, but it doesn't fix it either. A
+  separate persistent affordance for touch is its own project.
+- **No way to insert a section between two empty sections.** If the
+  doc is `[Section A (empty), Section B]`, there are no scenes to
+  anchor a vertical gutter, and the only horizontal bar is above
+  the first section. The user has to add a scene first or use the
+  editor. Rare in practice.
+- **Inserting a `#` at deeper nesting** (inside a `##`) is correct
+  in source semantics but the prototype's tree mutation is naive;
+  production must round-trip through the parser.
 
 ## Open questions before implementation
 
-- Confirm the depth model for inserts. **Inherit-depth +
-  Tab/Shift-Tab** keeps the cards view free of Fountain syntax;
-  **let the user type `#`s in the rename input** is even simpler and
-  uniformly handles inserts and existing-section depth edits, at the
-  cost of exposing the marker. Both leave the cascade question for a
-  separate indent/outdent-subtree command.
-- Confirm **same-depth-only** drag drops as the v1 scope for section
-  reorder.
-- Confirm scope for "scene drops into empty/boundary positions" —
-  ship as part of the section-drag PR or as a separate prerequisite?
-- For the section-insertion gutter: is the drop indicator visually
-  distinct from the scene-insertion gutter, or identical? Identical
-  is simpler; distinct (e.g., spans the full width of the section
-  group) communicates "this inserts a *section*, not a scene."
+- Verify "delete section header by clearing the rename input" with
+  a real user — the gesture is novel. Fallback if it surprises:
+  reject empty input and add an explicit delete affordance.
+- Confirm the source-text-edit-then-reparse round-trip handles the
+  deeper-nesting `#` insertion case across common authoring
+  patterns. Build test cases before shipping.
+- Tail-zone hover area on very long documents — does it interfere
+  with scrolling? Prototype says no, but worth confirming on a
+  real-sized script.
