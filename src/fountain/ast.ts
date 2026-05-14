@@ -128,6 +128,7 @@ export function mkTransition(range: Range, forced: boolean): Transition {
 export function mkDialogue(
   range: Range,
   characterRange: Range,
+  forcedMarkerRange: Range | null,
   characterExtensionsRange: Range,
   content: DialogueContent[],
   caretRange: Range | null,
@@ -136,6 +137,7 @@ export function mkDialogue(
     kind: "dialogue",
     range,
     characterRange,
+    forcedMarkerRange,
     characterExtensionsRange,
     content,
     caretRange,

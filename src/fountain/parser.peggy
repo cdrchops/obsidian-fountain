@@ -189,7 +189,7 @@ Dialogue
  = OptionalBlanks character:Character [ \t]* exts:CharacterExtensions
    caret:DualMarker? "\n"
    content:DialogueContent
- { return mkDialogue(range(), character, exts, content, caret); }
+ { return mkDialogue(range(), character.nameRange, character.forcedMarkerRange, exts, content, caret); }
 
 // The Fountain spec reads strictly as "the caret must be the last
 // character on the line" — i.e., no trailing whitespace. We match
@@ -211,8 +211,16 @@ CharacterExtensions
  = ([ \t]* "(" [^)\n]* ")")*  { return range() }
 
 Character
- = name:MaybeName &{ return /[A-Za-z]/.test(name) && name.toUpperCase() === name } { return range() }
- / "@" [^(\n]+        { return range() }
+ = !"@" name:MaybeName &{ return /[A-Za-z]/.test(name) && name.toUpperCase() === name }
+   { return { nameRange: range(), forcedMarkerRange: null }; }
+ / marker:ForcedMarker name:ForcedCharacterName
+   { return { nameRange: name, forcedMarkerRange: marker }; }
+
+ForcedMarker
+ = "@" { return range(); }
+
+ForcedCharacterName
+ = [^(\n]+ { return range(); }
 
 MaybeName
  = [^ >\t\n] NameChar* { return text() }

@@ -440,6 +440,7 @@ More action here.`;
                     },
                   ],
                   caretRange: null,
+                  forcedMarkerRange: null,
                   dual: false,
                 },
                 {
@@ -478,6 +479,7 @@ More action here.`;
                     },
                   ],
                   caretRange: null,
+                  forcedMarkerRange: null,
                   dual: false,
                 },
                 {

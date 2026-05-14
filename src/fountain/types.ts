@@ -192,7 +192,18 @@ export type DialogueContent = DialogueContentParenthetical | DialogueContentLine
 export type Dialogue = {
   kind: "dialogue";
   range: Range; /// range of everything
-  characterRange: Range; /// range of the character line excl extensions excl whitespace at the beginning.
+  /// Range of the character name (excluding leading whitespace, the
+  /// optional `@` forced-character marker, extensions, and the dual
+  /// `^`). Slicing this range yields exactly the displayable character
+  /// name — preview/PDF/editor highlights/`charactersOf` all rely on
+  /// that. The marker position lives separately on `forcedMarkerRange`.
+  characterRange: Range;
+  /// Range of the `@` forced-character marker if present in source.
+  /// Following rule 3: the range existing is the signal that the marker
+  /// is present (no parallel boolean). Covers exactly the `@`. The Fountain
+  /// spec treats `@` as a parser-only hint — it must not appear in
+  /// rendered output, so `characterRange` deliberately excludes it.
+  forcedMarkerRange: Range | null;
   characterExtensionsRange: Range; /// range of all extensions (empty range if no extensions) including all parentheses
   content: DialogueContent[];
   /// Range of the `^` dual-dialogue marker if present in source. Always set

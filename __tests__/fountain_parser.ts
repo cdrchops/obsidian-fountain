@@ -608,6 +608,47 @@ describe("Forced character (@-prefix)", () => {
     "@123\nThis is dialogue\n",
     [{ kind: "dialogue", source: "@123\nThis is dialogue\n" }],
   );
+
+  // The `@` is a parser-only hint per the Fountain spec — it must not
+  // appear in rendered output. `characterRange` is what every consumer
+  // slices for display, so we split the marker off into
+  // `forcedMarkerRange` and have `characterRange` cover only the name.
+  test("characterRange excludes the @; forcedMarkerRange covers the @", () => {
+    const src = "@KOOL-AID MAN\nAm I the Kool-Aid Man? Yes.\n";
+    const script: FountainScript = parse(src, {});
+    const d = script.script[0];
+    expect(d.kind).toBe("dialogue");
+    if (d.kind !== "dialogue") return;
+    expect(src.slice(d.characterRange.start, d.characterRange.end)).toBe(
+      "KOOL-AID MAN",
+    );
+    expect(d.forcedMarkerRange).not.toBeNull();
+    if (d.forcedMarkerRange) {
+      expect(
+        src.slice(d.forcedMarkerRange.start, d.forcedMarkerRange.end),
+      ).toBe("@");
+      expect(d.forcedMarkerRange.end).toBe(d.characterRange.start);
+    }
+  });
+
+  test("forcedMarkerRange is null for an unforced character", () => {
+    const src = "BRICK\nLine.\n";
+    const script: FountainScript = parse(src, {});
+    const d = script.script[0];
+    expect(d.kind).toBe("dialogue");
+    if (d.kind !== "dialogue") return;
+    expect(d.forcedMarkerRange).toBeNull();
+  });
+
+  test("allCharacters / charactersOf strip the @ prefix", () => {
+    const src = "@McCLANE\nYippee-ki-yay.\n";
+    const script: FountainScript = parse(src, {});
+    const d = script.script[0];
+    expect(d.kind).toBe("dialogue");
+    if (d.kind !== "dialogue") return;
+    expect(script.charactersOf(d)).toEqual(["McCLANE"]);
+    expect(Array.from(script.allCharacters)).toEqual(["McCLANE"]);
+  });
 });
 
 describe("Scene heading prefixes", () => {
