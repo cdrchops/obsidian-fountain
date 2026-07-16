@@ -126,7 +126,7 @@
 	width: fit-content;
 	margin-left: 1.1in;
 	margin-bottom: 0;
-	padding: 0px;
+	padding: 0 0 1em 0;
 }
 
 .screenplay .dialogue-character {
@@ -134,7 +134,7 @@
 	color: var(--h2-color);
 	font-weight: var(--bold-weight);
 	font-size: inherit;
-	padding: 0 0 0 2.5in;
+	padding: 0 0 1em 2.5in;
 	margin: 0;
 	width: fit-content;
 	break-after: avoid-page;
